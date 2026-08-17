@@ -1,0 +1,33 @@
+{
+  "up": [
+    0.0,
+    1.0,
+    0.0
+  ],
+  "front": [
+    0.0,
+    0.0,
+    -1.0
+  ],
+  "render_asset": "1870e1375f73661b89e04153b57d8e71ad0f6fdf.glb",
+  "collision_asset": "1870e1375f73661b89e04153b57d8e71ad0f6fdf.collider.glb",
+  "semantic_id": 299,
+  "marker_sets": {
+    "faucets": {
+      "root": {
+        "faucet_000": {
+          "markers": {
+            "000": [
+              -0.0017361,
+              -0.058701,
+              -0.0003037
+            ]
+          }
+        }
+      }
+    }
+  },
+  "friction_coefficient": 1.0,
+  "restitution_coefficient": 0.0,
+  "mass": 100.0
+}

@@ -1,0 +1,18 @@
+{
+  "up": [
+    0.0,
+    1.0,
+    0.0
+  ],
+  "front": [
+    0.0,
+    0.0,
+    -1.0
+  ],
+  "render_asset": "hcbv3r_102816756_0165_d447061c7789c13313115d238476550cf86215c8_render_asset_d447061c7789c13313115d238476550cf86215c8_positive_scale.glb",
+  "collision_asset": "hcbv3r_102816756_0165_d447061c7789c13313115d238476550cf86215c8_collision_asset_d447061c7789c13313115d238476550cf86215c8.collider_positive_scale.glb",
+  "semantic_id": 100,
+  "friction_coefficient": 1.0,
+  "restitution_coefficient": 0.0,
+  "mass": 100.0
+}

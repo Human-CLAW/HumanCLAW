@@ -1,0 +1,10 @@
+{
+  "backend": "openai_compatible",
+  "model": "replace-with-served-model-name",
+  "base_url": "http://127.0.0.1:8100/v1",
+  "api_key_env": "OPENAI_API_KEY",
+  "max_tokens": 1200,
+  "temperature": 0.0,
+  "response_format": {"type": "json_object"},
+  "extra_body": {}
+}

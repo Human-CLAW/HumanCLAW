@@ -1,0 +1,84 @@
+{
+  "schema": "humanclaw_release_profile_v1",
+  "profile": "paper_fullval_v1",
+  "description": "HumanClawBench full-validation protocol used for the reported evaluation.",
+  "benchmark": {
+    "dataset_dir": "resources/benchmark/episodes",
+    "scene_dataset_config": "data/humanclaw-hssd-val41/hssd-hab.scene_dataset_config.json",
+    "split": "val",
+    "n_episodes": 1218,
+    "n_interact_episodes": 597,
+    "max_steps": 100,
+    "instruction_version": "v1"
+  },
+  "agent": {
+    "type": "psv_ego",
+    "prompt_version": "v4",
+    "verifier_version": "v3",
+    "max_history": 10,
+    "plan_horizon_steps": 6
+  },
+  "vlm": {
+    "model_config_required": true,
+    "model_invocation_manifest": "configs/paper_table_model_invocations.json",
+    "required_model_config_fields": ["backend", "model", "max_tokens", "temperature", "response_format"],
+    "temperature": 0.0,
+    "max_tokens_policy": "model_specific",
+    "output_contract": "json_object",
+    "response_format_policy": "adapter_specific"
+  },
+  "motion": {
+    "skills": [
+      "walk_forward", "side_walk", "step_back", "turn",
+      "step_climb_up", "step_climb_down", "sit", "stand"
+    ],
+    "weights_manifest": "resources/weights/paper_fullval_v1.json",
+    "weights_root": "weights/paper_fullval_v1",
+    "verify_weights": true,
+    "seed_mode": "pt",
+    "seed_pt": "resources/seeds/natural_beta0_fk_seed.pt",
+    "seed_pkl": null,
+    "device": "cuda"
+  },
+  "physics": {
+    "backend": "hp",
+    "agent_urdf": "resources/agent/neutral_beta0_handmerged/neutral_beta0_handmerged.urdf",
+    "agent_shift_npy": "resources/agent/neutral_beta0_handmerged/shift.npy",
+    "physics_config": "src/humanclaw_bench/envs/half_physics/humanclaw.physics_config.json",
+    "fps": 30.0,
+    "root_gravity_scale": 1.0,
+    "root_gravity_mode": "midpoint",
+    "inherit_downward_root_y_velocity": true,
+    "pjsc_lambda": 1.0,
+    "pjsc_lambda_by_link": {
+      "left_ankle": 0.1,
+      "right_ankle": 0.1,
+      "left_shoulder": 0.03,
+      "right_shoulder": 0.03,
+      "left_wrist": 0.1,
+      "right_wrist": 0.1
+    },
+    "pjsc_substeps": 4,
+    "root_linear_xz_command_substeps": [0, 2],
+    "friction": 0.4
+  },
+  "rendering": {
+    "lighting": "ambient",
+    "ambient_strength": 1.2,
+    "ego_resolution": [448, 448],
+    "third_person_resolution": [512, 512]
+  },
+  "metrics": {
+    "find_pixel_threshold": 100,
+    "nav_distance_m": 0.2,
+    "nav_relaxed_distance_m": 1.0,
+    "collision_contact_source": "post_physics_30hz",
+    "fixed_contact_min_height_m": 0.0205,
+    "initial_penetration_threshold_m": 0.01,
+    "floor_ray_max_distance_m": 100.0,
+    "floor_select_epsilon_m": 0.05,
+    "jerk_neutral_body22": "resources/metrics/smpl_neutral_body22.json",
+    "jerk_smooth_window": 3,
+    "jerk_stride": 8
+  }
+}

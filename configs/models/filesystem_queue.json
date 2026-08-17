@@ -1,0 +1,11 @@
+{
+  "backend": "filesystem_queue",
+  "model": "replace-with-provider-model-name",
+  "queue_dir": "running/vlm_queue",
+  "max_tokens": 1200,
+  "temperature": 0.0,
+  "response_format": {"type": "json_object"},
+  "reasoning_budget_tokens": null,
+  "timeout_s": 900,
+  "poll_interval_s": 1
+}

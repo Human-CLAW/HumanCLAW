@@ -1,0 +1,17 @@
+{
+  "up": [
+    0.0,
+    1.0,
+    0.0
+  ],
+  "front": [
+    0.0,
+    0.0,
+    -1.0
+  ],
+  "render_asset": "hcbv3r_106878867_174886977_0314_218-23_render_asset_218-23_positive_scale.glb",
+  "collision_asset": "hcbv3r_106878867_174886977_0314_218-23_render_asset_218-23_positive_scale.glb",
+  "friction_coefficient": 1.0,
+  "restitution_coefficient": 0.0,
+  "mass": 100.0
+}

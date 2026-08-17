@@ -1,0 +1,33 @@
+{
+  "up": [
+    0.0,
+    1.0,
+    0.0
+  ],
+  "front": [
+    0.0,
+    0.0,
+    -1.0
+  ],
+  "render_asset": "hcbv3r_106879080_174887211_0393_6b408a09af773f17c06c960ad0ec13f2434638d9_render_asset_6b408a09af773f17c06c960ad0ec13f2434638d9_positive_scale.glb",
+  "collision_asset": "hcbv3r_106879080_174887211_0393_6b408a09af773f17c06c960ad0ec13f2434638d9_collision_asset_6b408a09af773f17c06c960ad0ec13f2434638d9.collider_positive_scale.glb",
+  "semantic_id": 57,
+  "marker_sets": {
+    "faucets": {
+      "root": {
+        "faucet_000": {
+          "markers": {
+            "000": [
+              0.2116081,
+              -0.1517328,
+              -0.0310859
+            ]
+          }
+        }
+      }
+    }
+  },
+  "friction_coefficient": 1.0,
+  "restitution_coefficient": 0.0,
+  "mass": 147.38
+}

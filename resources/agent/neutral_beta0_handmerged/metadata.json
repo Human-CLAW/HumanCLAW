@@ -1,0 +1,557 @@
+{
+  "name": "neutral_beta0_handmerged",
+  "gender": "neutral",
+  "betas": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "model_source": "SMPL-X neutral body with all ten shape coefficients set to zero; the source body model is not required at runtime.",
+  "mesh_mode": "convex_hull",
+  "joint_count": 55,
+  "urdf_contract": "55 SMPL-X links/joints retained; finger links have no visual/collision geometry.",
+  "hand_merge": {
+    "left_wrist": [
+      "left_wrist",
+      "left_index1",
+      "left_index2",
+      "left_index3",
+      "left_middle1",
+      "left_middle2",
+      "left_middle3",
+      "left_pinky1",
+      "left_pinky2",
+      "left_pinky3",
+      "left_ring1",
+      "left_ring2",
+      "left_ring3",
+      "left_thumb1",
+      "left_thumb2",
+      "left_thumb3"
+    ],
+    "right_wrist": [
+      "right_wrist",
+      "right_index1",
+      "right_index2",
+      "right_index3",
+      "right_middle1",
+      "right_middle2",
+      "right_middle3",
+      "right_pinky1",
+      "right_pinky2",
+      "right_pinky3",
+      "right_ring1",
+      "right_ring2",
+      "right_ring3",
+      "right_thumb1",
+      "right_thumb2",
+      "right_thumb3"
+    ],
+    "collisionless_finger_links": [
+      "left_index1",
+      "left_index2",
+      "left_index3",
+      "left_middle1",
+      "left_middle2",
+      "left_middle3",
+      "left_pinky1",
+      "left_pinky2",
+      "left_pinky3",
+      "left_ring1",
+      "left_ring2",
+      "left_ring3",
+      "left_thumb1",
+      "left_thumb2",
+      "left_thumb3",
+      "right_index1",
+      "right_index2",
+      "right_index3",
+      "right_middle1",
+      "right_middle2",
+      "right_middle3",
+      "right_pinky1",
+      "right_pinky2",
+      "right_pinky3",
+      "right_ring1",
+      "right_ring2",
+      "right_ring3",
+      "right_thumb1",
+      "right_thumb2",
+      "right_thumb3"
+    ]
+  },
+  "mesh_stats": {
+    "pelvis": {
+      "vertices": 218,
+      "faces": 432,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "pelvis"
+      ]
+    },
+    "left_hip": {
+      "vertices": 87,
+      "faces": 170,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "left_hip"
+      ]
+    },
+    "right_hip": {
+      "vertices": 92,
+      "faces": 180,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "right_hip"
+      ]
+    },
+    "spine1": {
+      "vertices": 100,
+      "faces": 196,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "spine1"
+      ]
+    },
+    "left_knee": {
+      "vertices": 57,
+      "faces": 110,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "left_knee"
+      ]
+    },
+    "right_knee": {
+      "vertices": 60,
+      "faces": 116,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "right_knee"
+      ]
+    },
+    "spine2": {
+      "vertices": 99,
+      "faces": 194,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "spine2"
+      ]
+    },
+    "left_ankle": {
+      "vertices": 47,
+      "faces": 90,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "left_ankle"
+      ]
+    },
+    "right_ankle": {
+      "vertices": 47,
+      "faces": 90,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "right_ankle"
+      ]
+    },
+    "spine3": {
+      "vertices": 210,
+      "faces": 416,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "spine3"
+      ]
+    },
+    "left_foot": {
+      "vertices": 57,
+      "faces": 110,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "left_foot"
+      ]
+    },
+    "right_foot": {
+      "vertices": 57,
+      "faces": 110,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "right_foot"
+      ]
+    },
+    "neck": {
+      "vertices": 39,
+      "faces": 74,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "neck"
+      ]
+    },
+    "left_collar": {
+      "vertices": 66,
+      "faces": 128,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "left_collar"
+      ]
+    },
+    "right_collar": {
+      "vertices": 68,
+      "faces": 132,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "right_collar"
+      ]
+    },
+    "head": {
+      "vertices": 504,
+      "faces": 1004,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "head"
+      ]
+    },
+    "left_shoulder": {
+      "vertices": 79,
+      "faces": 154,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "left_shoulder"
+      ]
+    },
+    "right_shoulder": {
+      "vertices": 76,
+      "faces": 148,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "right_shoulder"
+      ]
+    },
+    "left_elbow": {
+      "vertices": 111,
+      "faces": 218,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "left_elbow"
+      ]
+    },
+    "right_elbow": {
+      "vertices": 112,
+      "faces": 220,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "right_elbow"
+      ]
+    },
+    "left_wrist": {
+      "vertices": 101,
+      "faces": 198,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "left_wrist",
+        "left_index1",
+        "left_index2",
+        "left_index3",
+        "left_middle1",
+        "left_middle2",
+        "left_middle3",
+        "left_pinky1",
+        "left_pinky2",
+        "left_pinky3",
+        "left_ring1",
+        "left_ring2",
+        "left_ring3",
+        "left_thumb1",
+        "left_thumb2",
+        "left_thumb3"
+      ]
+    },
+    "right_wrist": {
+      "vertices": 100,
+      "faces": 196,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "right_wrist",
+        "right_index1",
+        "right_index2",
+        "right_index3",
+        "right_middle1",
+        "right_middle2",
+        "right_middle3",
+        "right_pinky1",
+        "right_pinky2",
+        "right_pinky3",
+        "right_ring1",
+        "right_ring2",
+        "right_ring3",
+        "right_thumb1",
+        "right_thumb2",
+        "right_thumb3"
+      ]
+    },
+    "jaw": {
+      "vertices": 106,
+      "faces": 208,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "jaw"
+      ]
+    },
+    "left_eye_smplhf": {
+      "vertices": 514,
+      "faces": 1024,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "left_eye_smplhf"
+      ]
+    },
+    "right_eye_smplhf": {
+      "vertices": 514,
+      "faces": 1024,
+      "watertight": true,
+      "collisionless": false,
+      "source_parts": [
+        "right_eye_smplhf"
+      ]
+    },
+    "left_index1": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "left_wrist"
+    },
+    "left_index2": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "left_wrist"
+    },
+    "left_index3": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "left_wrist"
+    },
+    "left_middle1": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "left_wrist"
+    },
+    "left_middle2": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "left_wrist"
+    },
+    "left_middle3": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "left_wrist"
+    },
+    "left_pinky1": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "left_wrist"
+    },
+    "left_pinky2": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "left_wrist"
+    },
+    "left_pinky3": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "left_wrist"
+    },
+    "left_ring1": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "left_wrist"
+    },
+    "left_ring2": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "left_wrist"
+    },
+    "left_ring3": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "left_wrist"
+    },
+    "left_thumb1": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "left_wrist"
+    },
+    "left_thumb2": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "left_wrist"
+    },
+    "left_thumb3": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "left_wrist"
+    },
+    "right_index1": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "right_wrist"
+    },
+    "right_index2": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "right_wrist"
+    },
+    "right_index3": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "right_wrist"
+    },
+    "right_middle1": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "right_wrist"
+    },
+    "right_middle2": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "right_wrist"
+    },
+    "right_middle3": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "right_wrist"
+    },
+    "right_pinky1": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "right_wrist"
+    },
+    "right_pinky2": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "right_wrist"
+    },
+    "right_pinky3": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "right_wrist"
+    },
+    "right_ring1": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "right_wrist"
+    },
+    "right_ring2": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "right_wrist"
+    },
+    "right_ring3": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "right_wrist"
+    },
+    "right_thumb1": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "right_wrist"
+    },
+    "right_thumb2": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "right_wrist"
+    },
+    "right_thumb3": {
+      "vertices": 0,
+      "faces": 0,
+      "watertight": null,
+      "collisionless": true,
+      "merged_into": "right_wrist"
+    }
+  }
+}

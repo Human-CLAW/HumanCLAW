@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "humanclaw-bench"
+version = "0.1.0"
+description = "HumanClawBench rollout release"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["huggingface_hub>=0.24", "numpy>=1.24", "Pillow>=9.5"]
+
+[project.optional-dependencies]
+rollout = ["openai>=1.30", "scipy>=1.10", "torch>=2.1"]
+video = ["imageio-ffmpeg>=0.4.9"]
+training = ["torch>=2.1", "smplx>=0.1.28"]
+test = ["pytest>=7.4", "scipy>=1.10"]
+
+[project.urls]
+Repository = "https://github.com/Human-CLAW/HumanClawBench"
+"Motion Weights" = "https://huggingface.co/Human-CLAW/HumanCLAW"
+"HSSD Supplement" = "https://huggingface.co/datasets/Human-CLAW/HumanCLAW-HSSD"
+
+[project.scripts]
+humanclaw-bench = "humanclaw_bench.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"humanclaw_bench.envs.half_physics" = ["humanclaw.physics_config.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

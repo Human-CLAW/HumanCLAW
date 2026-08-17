@@ -1,0 +1,112 @@
+{
+  "schema": "humanclaw_paper_model_invocations_v1",
+  "audited_on": "2026-08-14",
+  "evidence": "Verified against the episode-level run configurations used for the final benchmark rollouts; private endpoints and credentials are not release inputs.",
+  "shared_rollout_contract": {
+    "prompt_version": "v4",
+    "verifier_version": "v3",
+    "instruction_version": "v1",
+    "temperature": 0.0,
+    "max_steps": 100,
+    "plan_horizon_steps": 6,
+    "qwen_disable_thinking": false,
+    "skills": [
+      "walk_forward",
+      "side_walk",
+      "step_back",
+      "turn",
+      "step_climb_up",
+      "step_climb_down",
+      "sit",
+      "stand"
+    ]
+  },
+  "notes": {
+    "max_tokens": "Model-specific; it was not 1200 for every paper row.",
+    "reasoning_budget_tokens": "A queue/provider request field. null means the launcher did not set it.",
+    "transport": "Internal endpoints, queue locations, and credentials are intentionally omitted. Backend family and request parameters are retained."
+  },
+  "models": [
+    {
+      "id": "gpt55low",
+      "display_name": "GPT-5.5",
+      "historical_backend": "azure_openai",
+      "release_adapter": "openai_compatible",
+      "max_tokens": 4096,
+      "reasoning_budget_tokens": 512,
+      "json_object_response_requested_by_runner": false
+    },
+    {
+      "id": "gemini31",
+      "display_name": "Gemini-3.1",
+      "historical_backend": "filesystem_queue",
+      "release_adapter": "filesystem_queue",
+      "max_tokens": 1200,
+      "reasoning_budget_tokens": 512,
+      "json_object_response_requested_by_runner": true
+    },
+    {
+      "id": "gemini25",
+      "display_name": "Gemini-2.5",
+      "historical_backend": "filesystem_queue",
+      "release_adapter": "filesystem_queue",
+      "max_tokens": 1200,
+      "reasoning_budget_tokens": 512,
+      "json_object_response_requested_by_runner": true
+    },
+    {
+      "id": "claude48",
+      "display_name": "Claude-4.8",
+      "historical_backend": "filesystem_queue",
+      "release_adapter": "filesystem_queue",
+      "max_tokens": 1200,
+      "reasoning_budget_tokens": 0,
+      "json_object_response_requested_by_runner": true
+    },
+    {
+      "id": "gemma4",
+      "display_name": "Gemma-4-31B",
+      "historical_backend": "vllm",
+      "release_adapter": "openai_compatible",
+      "max_tokens": 1200,
+      "reasoning_budget_tokens": null,
+      "json_object_response_requested_by_runner": true
+    },
+    {
+      "id": "qwen36_27b",
+      "display_name": "Qwen3.6-27B",
+      "historical_backend": "vllm",
+      "release_adapter": "openai_compatible",
+      "max_tokens": 4096,
+      "reasoning_budget_tokens": null,
+      "json_object_response_requested_by_runner": true
+    },
+    {
+      "id": "qwen36_35b_a3b",
+      "display_name": "Qwen3.6-35B-A3B",
+      "historical_backend": "vllm",
+      "release_adapter": "openai_compatible",
+      "max_tokens": 4096,
+      "reasoning_budget_tokens": null,
+      "json_object_response_requested_by_runner": true
+    },
+    {
+      "id": "qwen35_27b",
+      "display_name": "Qwen3.5-27B",
+      "historical_backend": "vllm",
+      "release_adapter": "openai_compatible",
+      "max_tokens": 4096,
+      "reasoning_budget_tokens": null,
+      "json_object_response_requested_by_runner": true
+    },
+    {
+      "id": "internvl35_38b",
+      "display_name": "InternVL3.5-38B",
+      "historical_backend": "vllm",
+      "release_adapter": "openai_compatible",
+      "max_tokens": 2048,
+      "reasoning_budget_tokens": null,
+      "json_object_response_requested_by_runner": true
+    }
+  ]
+}

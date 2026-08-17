@@ -1,0 +1,99 @@
+{
+  "schema": "humanclaw_motion_training_profile_v1",
+  "profile": "paper_training_v1",
+  "architecture": {
+    "x_dim": 219,
+    "hidden_dim": 512,
+    "num_layers": 10,
+    "num_heads": 8,
+    "mlp_ratio": 2.0,
+    "n_history": 5,
+    "n_future": 15,
+    "nfe_steps": 30,
+    "use_qk_norm": false
+  },
+  "base_training": {
+    "batch_size": 512,
+    "max_epochs": 135,
+    "reference_iterations": 109620,
+    "learning_rate": 0.0001,
+    "normalize": false,
+    "gradient_clip_norm": 1.0,
+    "num_workers": 8
+  },
+  "control_defaults": {
+    "batch_size": 2048,
+    "max_steps": 1500000,
+    "learning_rate": 0.0003,
+    "warmup_steps": 50,
+    "log_every_steps": 500,
+    "checkpoint_every_steps": 10000,
+    "parameter_dtype": "fp32",
+    "data_dtype": "fp32",
+    "autocast_dtype": "bf16",
+    "compile_mode": "reduce-overhead",
+    "use_sdpa": true,
+    "seed": 42
+  },
+  "skills": {
+    "walk_forward": {
+      "network": "WalkForwardCtrlDiTFourierXZYaw",
+      "manifest": "resources/motion/training/manifests/walk_forward.csv",
+      "expected_samples": 16023,
+      "condition": "final canonical pelvis x, pelvis z, and body yaw in degrees",
+      "n_freqs": 6,
+      "repeat_factor": 1
+    },
+    "side_walk": {
+      "network": "SideWalkCtrlDiTFourier",
+      "manifest": "resources/motion/training/manifests/side_walk.csv",
+      "expected_samples": 2012,
+      "condition": "final canonical lateral pelvis displacement in meters",
+      "n_freqs": 6,
+      "repeat_factor": 2
+    },
+    "step_back": {
+      "network": "WalkForwardCtrlDiTFourier",
+      "manifest": "resources/motion/training/manifests/step_back.csv",
+      "expected_samples": 2294,
+      "condition": "final canonical pelvis x and pelvis z displacement in meters",
+      "n_freqs": 6,
+      "repeat_factor": 1
+    },
+    "turn": {
+      "network": "TurnCtrlDiT",
+      "manifest": "resources/motion/training/manifests/turn.csv",
+      "expected_samples": 6773,
+      "condition": "final canonical signed body yaw in degrees, normalized by 75 for the MLP",
+      "repeat_factor": 1
+    },
+    "step_climb_up": {
+      "network": "StepClimbUpCtrlDiT",
+      "manifest": "resources/motion/training/manifests/step_climb_up.csv",
+      "expected_samples": 2086,
+      "condition": "maximum toe height and horizontal separation over the chunk",
+      "repeat_factor": 1
+    },
+    "step_climb_down": {
+      "network": "StepClimbDownCtrlDiT",
+      "manifest": "resources/motion/training/manifests/step_climb_down.csv",
+      "expected_samples": 2094,
+      "condition": "maximum toe height and horizontal separation over the chunk",
+      "repeat_factor": 2
+    },
+    "stop": {
+      "network": "NonCondCtrlDiT",
+      "manifest": "resources/motion/training/manifests/stop.csv",
+      "expected_samples": 4011,
+      "condition": "one learned action token; no numeric action parameter",
+      "repeat_factor": 1
+    },
+    "sit": {
+      "network": "SitCtrlDiT",
+      "manifest": "resources/motion/training/manifests/sit.csv",
+      "expected_samples": 5912,
+      "condition": "minimum canonical pelvis height over the accepted sit segment",
+      "repeat_factor": 1
+    }
+  }
+}

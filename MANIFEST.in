@@ -1,0 +1,14 @@
+include README.md
+include README_zh.md
+include pyproject.toml
+include weights/paper_fullval_v1/README.md
+include weights/paper_fullval_v1/README_zh.md
+recursive-include configs *.json
+recursive-include docs *.md
+recursive-include patches *.patch *.md
+recursive-include resources *
+recursive-exclude resources/hssd/humanclaw-hssd-val41/supplemental_objects *
+recursive-include src/humanclaw_bench/envs/half_physics humanclaw.physics_config.json
+recursive-include src/humanclaw_bench/motion/training *.md
+recursive-include tests *.py
+global-exclude __pycache__ *.py[cod] .DS_Store

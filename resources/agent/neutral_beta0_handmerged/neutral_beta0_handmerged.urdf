@@ -1,0 +1,980 @@
+<?xml version="1.0" ?>
+<robot name="neutral_beta0_handmerged">
+	<!--LINKS-->
+	<link name="pelvis">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/pelvis.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/pelvis.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="left_hip">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_hip.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_hip.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="right_hip">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_hip.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_hip.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="spine1">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/spine1.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/spine1.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="left_knee">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_knee.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_knee.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="right_knee">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_knee.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_knee.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="spine2">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/spine2.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/spine2.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="left_ankle">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_ankle.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_ankle.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="right_ankle">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_ankle.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_ankle.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="spine3">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/spine3.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/spine3.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="left_foot">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_foot.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_foot.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="right_foot">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_foot.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_foot.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="neck">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/neck.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/neck.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="left_collar">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_collar.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_collar.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="right_collar">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_collar.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_collar.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="head">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/head.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/head.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="left_shoulder">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_shoulder.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_shoulder.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="right_shoulder">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_shoulder.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_shoulder.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="left_elbow">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_elbow.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_elbow.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="right_elbow">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_elbow.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_elbow.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="left_wrist">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_wrist.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_wrist.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="right_wrist">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_wrist.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_wrist.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="jaw">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/jaw.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/jaw.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="left_eye_smplhf">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_eye_smplhf.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/left_eye_smplhf.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="right_eye_smplhf">
+		<inertial>
+			<mass value="5.000000"/>
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+		</inertial>
+		<visual>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_eye_smplhf.stl"/>
+			</geometry>
+			<material name="mat_col">
+				<color rgba="0.20 0.50 0.50 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin rpy="0 0 0" xyz="0.000000 0.000000 0.000000"/>
+			<geometry>
+				<mesh filename="meshes/right_eye_smplhf.stl"/>
+			</geometry>
+		</collision>
+	</link>
+	<link name="left_index1">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="left_index2">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="left_index3">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="left_middle1">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="left_middle2">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="left_middle3">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="left_pinky1">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="left_pinky2">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="left_pinky3">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="left_ring1">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="left_ring2">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="left_ring3">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="left_thumb1">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="left_thumb2">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="left_thumb3">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="right_index1">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="right_index2">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="right_index3">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="right_middle1">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="right_middle2">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="right_middle3">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="right_pinky1">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="right_pinky2">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="right_pinky3">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="right_ring1">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="right_ring2">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="right_ring3">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="right_thumb1">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="right_thumb2">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<link name="right_thumb3">
+		<inertial>
+			<mass value="0.001000"/>
+			<inertia ixx="0.000001" ixy="0.0" ixz="0.0" iyy="0.000001" iyz="0.0" izz="0.000001"/>
+		</inertial>
+	</link>
+	<!--JOINTS-->
+	<joint name="left_hip" type="spherical">
+		<parent link="pelvis"/>
+		<child link="left_hip"/>
+		<origin rpy="0 0 0" xyz="0.058189 -0.092763 -0.026001"/>
+	</joint>
+	<joint name="right_hip" type="spherical">
+		<parent link="pelvis"/>
+		<child link="right_hip"/>
+		<origin rpy="0 0 0" xyz="-0.063267 -0.103908 -0.021250"/>
+	</joint>
+	<joint name="spine1" type="spherical">
+		<parent link="pelvis"/>
+		<child link="spine1"/>
+		<origin rpy="0 0 0" xyz="-0.002763 0.109891 -0.027618"/>
+	</joint>
+	<joint name="left_knee" type="spherical">
+		<parent link="left_hip"/>
+		<child link="left_knee"/>
+		<origin rpy="0 0 0" xyz="0.054695 -0.378753 -0.009396"/>
+	</joint>
+	<joint name="right_knee" type="spherical">
+		<parent link="right_hip"/>
+		<child link="right_knee"/>
+		<origin rpy="0 0 0" xyz="-0.044210 -0.362380 -0.016824"/>
+	</joint>
+	<joint name="spine2" type="spherical">
+		<parent link="spine1"/>
+		<child link="spine2"/>
+		<origin rpy="0 0 0" xyz="0.009448 0.131853 -0.005940"/>
+	</joint>
+	<joint name="left_ankle" type="spherical">
+		<parent link="left_knee"/>
+		<child link="left_ankle"/>
+		<origin rpy="0 0 0" xyz="-0.043453 -0.403059 -0.031876"/>
+	</joint>
+	<joint name="right_ankle" type="spherical">
+		<parent link="right_knee"/>
+		<child link="right_ankle"/>
+		<origin rpy="0 0 0" xyz="0.015417 -0.410728 -0.020192"/>
+	</joint>
+	<joint name="spine3" type="spherical">
+		<parent link="spine2"/>
+		<child link="spine3"/>
+		<origin rpy="0 0 0" xyz="-0.011330 0.052235 0.028447"/>
+	</joint>
+	<joint name="left_foot" type="spherical">
+		<parent link="left_ankle"/>
+		<child link="left_foot"/>
+		<origin rpy="0 0 0" xyz="0.047257 -0.057997 0.118216"/>
+	</joint>
+	<joint name="right_foot" type="spherical">
+		<parent link="right_ankle"/>
+		<child link="right_foot"/>
+		<origin rpy="0 0 0" xyz="-0.038812 -0.058328 0.119049"/>
+	</joint>
+	<joint name="neck" type="spherical">
+		<parent link="spine3"/>
+		<child link="neck"/>
+		<origin rpy="0 0 0" xyz="-0.012164 0.165167 -0.031615"/>
+	</joint>
+	<joint name="left_collar" type="spherical">
+		<parent link="spine3"/>
+		<child link="left_collar"/>
+		<origin rpy="0 0 0" xyz="0.046364 0.084944 -0.007220"/>
+	</joint>
+	<joint name="right_collar" type="spherical">
+		<parent link="spine3"/>
+		<child link="right_collar"/>
+		<origin rpy="0 0 0" xyz="-0.047695 0.084339 -0.013400"/>
+	</joint>
+	<joint name="head" type="spherical">
+		<parent link="neck"/>
+		<child link="head"/>
+		<origin rpy="0 0 0" xyz="0.024783 0.160452 0.020737"/>
+	</joint>
+	<joint name="left_shoulder" type="spherical">
+		<parent link="left_collar"/>
+		<child link="left_shoulder"/>
+		<origin rpy="0 0 0" xyz="0.119239 0.057728 -0.015461"/>
+	</joint>
+	<joint name="right_shoulder" type="spherical">
+		<parent link="right_collar"/>
+		<child link="right_shoulder"/>
+		<origin rpy="0 0 0" xyz="-0.102578 0.053524 -0.012669"/>
+	</joint>
+	<joint name="left_elbow" type="spherical">
+		<parent link="left_shoulder"/>
+		<child link="left_elbow"/>
+		<origin rpy="0 0 0" xyz="0.254123 -0.072151 -0.042459"/>
+	</joint>
+	<joint name="right_elbow" type="spherical">
+		<parent link="right_shoulder"/>
+		<child link="right_elbow"/>
+		<origin rpy="0 0 0" xyz="-0.271150 -0.036492 -0.026467"/>
+	</joint>
+	<joint name="left_wrist" type="spherical">
+		<parent link="left_elbow"/>
+		<child link="left_wrist"/>
+		<origin rpy="0 0 0" xyz="0.251987 0.023221 -0.002472"/>
+	</joint>
+	<joint name="right_wrist" type="spherical">
+		<parent link="right_elbow"/>
+		<child link="right_wrist"/>
+		<origin rpy="0 0 0" xyz="-0.249267 -0.004533 -0.015325"/>
+	</joint>
+	<joint name="jaw" type="spherical">
+		<parent link="head"/>
+		<child link="jaw"/>
+		<origin rpy="0 0 0" xyz="-0.015765 -0.000520 -0.005639"/>
+	</joint>
+	<joint name="left_eye_smplhf" type="spherical">
+		<parent link="head"/>
+		<child link="left_eye_smplhf"/>
+		<origin rpy="0 0 0" xyz="0.020502 0.042642 0.066147"/>
+	</joint>
+	<joint name="right_eye_smplhf" type="spherical">
+		<parent link="head"/>
+		<child link="right_eye_smplhf"/>
+		<origin rpy="0 0 0" xyz="-0.042697 0.042642 0.066147"/>
+	</joint>
+	<joint name="left_index1" type="spherical">
+		<parent link="left_wrist"/>
+		<child link="left_index1"/>
+		<origin rpy="0 0 0" xyz="0.101902 -0.008688 0.019351"/>
+	</joint>
+	<joint name="left_index2" type="spherical">
+		<parent link="left_index1"/>
+		<child link="left_index2"/>
+		<origin rpy="0 0 0" xyz="0.031949 0.002218 0.003010"/>
+	</joint>
+	<joint name="left_index3" type="spherical">
+		<parent link="left_index2"/>
+		<child link="left_index3"/>
+		<origin rpy="0 0 0" xyz="0.022545 -0.002350 0.000055"/>
+	</joint>
+	<joint name="left_middle1" type="spherical">
+		<parent link="left_wrist"/>
+		<child link="left_middle1"/>
+		<origin rpy="0 0 0" xyz="0.109398 -0.006328 -0.003981"/>
+	</joint>
+	<joint name="left_middle2" type="spherical">
+		<parent link="left_middle1"/>
+		<child link="left_middle2"/>
+		<origin rpy="0 0 0" xyz="0.030611 0.000807 -0.004023"/>
+	</joint>
+	<joint name="left_middle3" type="spherical">
+		<parent link="left_middle2"/>
+		<child link="left_middle3"/>
+		<origin rpy="0 0 0" xyz="0.023515 -0.002009 -0.004114"/>
+	</joint>
+	<joint name="left_pinky1" type="spherical">
+		<parent link="left_wrist"/>
+		<child link="left_pinky1"/>
+		<origin rpy="0 0 0" xyz="0.084047 -0.014539 -0.043750"/>
+	</joint>
+	<joint name="left_pinky2" type="spherical">
+		<parent link="left_pinky1"/>
+		<child link="left_pinky2"/>
+		<origin rpy="0 0 0" xyz="0.015471 -0.001132 -0.011999"/>
+	</joint>
+	<joint name="left_pinky3" type="spherical">
+		<parent link="left_pinky2"/>
+		<child link="left_pinky3"/>
+		<origin rpy="0 0 0" xyz="0.015533 -0.001665 -0.011217"/>
+	</joint>
+	<joint name="left_ring1" type="spherical">
+		<parent link="left_wrist"/>
+		<child link="left_ring1"/>
+		<origin rpy="0 0 0" xyz="0.097444 -0.009268 -0.027345"/>
+	</joint>
+	<joint name="left_ring2" type="spherical">
+		<parent link="left_ring1"/>
+		<child link="left_ring2"/>
+		<origin rpy="0 0 0" xyz="0.028047 0.001485 -0.005266"/>
+	</joint>
+	<joint name="left_ring3" type="spherical">
+		<parent link="left_ring2"/>
+		<child link="left_ring3"/>
+		<origin rpy="0 0 0" xyz="0.022822 -0.001458 -0.007094"/>
+	</joint>
+	<joint name="left_thumb1" type="spherical">
+		<parent link="left_wrist"/>
+		<child link="left_thumb1"/>
+		<origin rpy="0 0 0" xyz="0.040636 -0.017977 0.025611"/>
+	</joint>
+	<joint name="left_thumb2" type="spherical">
+		<parent link="left_thumb1"/>
+		<child link="left_thumb2"/>
+		<origin rpy="0 0 0" xyz="0.017015 0.000976 0.024978"/>
+	</joint>
+	<joint name="left_thumb3" type="spherical">
+		<parent link="left_thumb2"/>
+		<child link="left_thumb3"/>
+		<origin rpy="0 0 0" xyz="0.020523 -0.005160 0.015523"/>
+	</joint>
+	<joint name="right_index1" type="spherical">
+		<parent link="right_wrist"/>
+		<child link="right_index1"/>
+		<origin rpy="0 0 0" xyz="-0.099881 -0.011783 0.019600"/>
+	</joint>
+	<joint name="right_index2" type="spherical">
+		<parent link="right_index1"/>
+		<child link="right_index2"/>
+		<origin rpy="0 0 0" xyz="-0.031948 0.002218 0.003011"/>
+	</joint>
+	<joint name="right_index3" type="spherical">
+		<parent link="right_index2"/>
+		<child link="right_index3"/>
+		<origin rpy="0 0 0" xyz="-0.022545 -0.002349 0.000055"/>
+	</joint>
+	<joint name="right_middle1" type="spherical">
+		<parent link="right_wrist"/>
+		<child link="right_middle1"/>
+		<origin rpy="0 0 0" xyz="-0.107376 -0.009422 -0.003734"/>
+	</joint>
+	<joint name="right_middle2" type="spherical">
+		<parent link="right_middle1"/>
+		<child link="right_middle2"/>
+		<origin rpy="0 0 0" xyz="-0.030611 0.000807 -0.004023"/>
+	</joint>
+	<joint name="right_middle3" type="spherical">
+		<parent link="right_middle2"/>
+		<child link="right_middle3"/>
+		<origin rpy="0 0 0" xyz="-0.023515 -0.002009 -0.004114"/>
+	</joint>
+	<joint name="right_pinky1" type="spherical">
+		<parent link="right_wrist"/>
+		<child link="right_pinky1"/>
+		<origin rpy="0 0 0" xyz="-0.082027 -0.017634 -0.043503"/>
+	</joint>
+	<joint name="right_pinky2" type="spherical">
+		<parent link="right_pinky1"/>
+		<child link="right_pinky2"/>
+		<origin rpy="0 0 0" xyz="-0.015470 -0.001132 -0.011999"/>
+	</joint>
+	<joint name="right_pinky3" type="spherical">
+		<parent link="right_pinky2"/>
+		<child link="right_pinky3"/>
+		<origin rpy="0 0 0" xyz="-0.015533 -0.001665 -0.011216"/>
+	</joint>
+	<joint name="right_ring1" type="spherical">
+		<parent link="right_wrist"/>
+		<child link="right_ring1"/>
+		<origin rpy="0 0 0" xyz="-0.095423 -0.012362 -0.027099"/>
+	</joint>
+	<joint name="right_ring2" type="spherical">
+		<parent link="right_ring1"/>
+		<child link="right_ring2"/>
+		<origin rpy="0 0 0" xyz="-0.028047 0.001485 -0.005266"/>
+	</joint>
+	<joint name="right_ring3" type="spherical">
+		<parent link="right_ring2"/>
+		<child link="right_ring3"/>
+		<origin rpy="0 0 0" xyz="-0.022822 -0.001459 -0.007093"/>
+	</joint>
+	<joint name="right_thumb1" type="spherical">
+		<parent link="right_wrist"/>
+		<child link="right_thumb1"/>
+		<origin rpy="0 0 0" xyz="-0.038613 -0.021074 0.025861"/>
+	</joint>
+	<joint name="right_thumb2" type="spherical">
+		<parent link="right_thumb1"/>
+		<child link="right_thumb2"/>
+		<origin rpy="0 0 0" xyz="-0.017015 0.000976 0.024978"/>
+	</joint>
+	<joint name="right_thumb3" type="spherical">
+		<parent link="right_thumb2"/>
+		<child link="right_thumb3"/>
+		<origin rpy="0 0 0" xyz="-0.020525 -0.005157 0.015522"/>
+	</joint>
+</robot>

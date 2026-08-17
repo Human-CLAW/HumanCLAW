@@ -1,0 +1,16 @@
+{
+  "render_asset": "hcbv3r_103997586_171030669_0278_219-30_render_asset_219-30_positive_scale.glb",
+  "up": [
+    0,
+    1,
+    0
+  ],
+  "front": [
+    0,
+    0,
+    -1
+  ],
+  "friction_coefficient": 1.0,
+  "restitution_coefficient": 0.0,
+  "mass": 100.0
+}

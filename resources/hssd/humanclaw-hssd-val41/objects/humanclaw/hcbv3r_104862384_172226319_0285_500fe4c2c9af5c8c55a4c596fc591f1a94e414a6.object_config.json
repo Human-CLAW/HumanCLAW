@@ -1,0 +1,45 @@
+{
+  "up": [
+    0.0,
+    1.0,
+    0.0
+  ],
+  "front": [
+    0.0,
+    0.0,
+    -1.0
+  ],
+  "render_asset": "500fe4c2c9af5c8c55a4c596fc591f1a94e414a6.glb",
+  "collision_asset": "500fe4c2c9af5c8c55a4c596fc591f1a94e414a6.collider.glb",
+  "semantic_id": 275,
+  "user_defined": {
+    "receptacle_mesh_500fe4c2c9af5c8c55a4c596fc591f1a94e414a6": {
+      "mesh_filepath": "500fe4c2c9af5c8c55a4c596fc591f1a94e414a6.filteredSupportSurface.glb",
+      "up": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "rotation": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "receptacle_mesh_500fe4c2c9af5c8c55a4c596fc591f1a94e414a6"
+    }
+  },
+  "friction_coefficient": 1.0,
+  "restitution_coefficient": 0.0,
+  "mass": 4.0
+}

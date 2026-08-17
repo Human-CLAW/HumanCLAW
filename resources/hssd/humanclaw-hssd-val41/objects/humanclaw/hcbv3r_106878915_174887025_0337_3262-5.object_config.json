@@ -1,0 +1,17 @@
+{
+  "up": [
+    0.0,
+    1.0,
+    0.0
+  ],
+  "front": [
+    0.0,
+    0.0,
+    -1.0
+  ],
+  "render_asset": "3262-5.glb",
+  "collision_asset": "hcbv3r_106878915_174887025_0337_3262-5_collision_asset_3262-5_winding_fixed.glb",
+  "friction_coefficient": 1.0,
+  "restitution_coefficient": 0.0,
+  "mass": 100.0
+}

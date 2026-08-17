@@ -1,0 +1,18 @@
+{
+  "up": [
+    0.0,
+    1.0,
+    0.0
+  ],
+  "front": [
+    0.0,
+    0.0,
+    -1.0
+  ],
+  "render_asset": "xxxx1d3141f1xa14ex4f1bxa180x6a76dcc05a5c.glb",
+  "collision_asset": "hcbv3r_102344094_0091_xxxx1d3141f1xa14ex4f1bxa180x6a76dcc05a5c_collision_asset_xxxx1d3141f1xa14ex4f1bxa180x6a76dcc05a5c_winding_fixed.glb",
+  "semantic_id": 243,
+  "friction_coefficient": 1.0,
+  "restitution_coefficient": 0.0,
+  "mass": 4.464
+}

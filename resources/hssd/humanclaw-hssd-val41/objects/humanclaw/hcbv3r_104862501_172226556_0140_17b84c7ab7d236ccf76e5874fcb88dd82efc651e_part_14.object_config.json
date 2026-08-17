@@ -1,0 +1,17 @@
+{
+  "render_asset": "17b84c7ab7d236ccf76e5874fcb88dd82efc651e_part_14.glb",
+  "up": [
+    0,
+    1,
+    0
+  ],
+  "front": [
+    0,
+    0,
+    -1
+  ],
+  "semantic_id": 3,
+  "friction_coefficient": 1.0,
+  "restitution_coefficient": 0.0,
+  "mass": 100.0
+}

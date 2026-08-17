@@ -1,0 +1,17 @@
+{
+  "render_asset": "589d23d411e606861d00b3f3dfeda8f596261157.glb",
+  "collision_asset": "589d23d411e606861d00b3f3dfeda8f596261157.collider.glb",
+  "up": [
+    0,
+    1,
+    0
+  ],
+  "front": [
+    0,
+    0,
+    -1
+  ],
+  "friction_coefficient": 1.0,
+  "restitution_coefficient": 0.0,
+  "mass": 1.0
+}

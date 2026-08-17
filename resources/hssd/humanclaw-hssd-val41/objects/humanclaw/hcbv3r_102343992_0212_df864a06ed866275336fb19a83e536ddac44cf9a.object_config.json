@@ -1,0 +1,44 @@
+{
+  "render_asset": "df864a06ed866275336fb19a83e536ddac44cf9a.glb",
+  "collision_asset": "df864a06ed866275336fb19a83e536ddac44cf9a.collider.glb",
+  "up": [
+    0,
+    1,
+    0
+  ],
+  "front": [
+    0,
+    0,
+    -1
+  ],
+  "user_defined": {
+    "receptacle_mesh_df864a06ed866275336fb19a83e536ddac44cf9a": {
+      "name": "receptacle_mesh_df864a06ed866275336fb19a83e536ddac44cf9a",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "up": [
+        0,
+        1,
+        0
+      ],
+      "mesh_filepath": "df864a06ed866275336fb19a83e536ddac44cf9a.filteredSupportSurface.glb"
+    }
+  },
+  "friction_coefficient": 1.0,
+  "restitution_coefficient": 0.0,
+  "mass": 57.833
+}

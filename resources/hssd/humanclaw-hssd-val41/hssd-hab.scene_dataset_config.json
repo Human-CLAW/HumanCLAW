@@ -1,0 +1,30 @@
+{
+    "stages": {
+        "paths": {
+            ".json": [
+                "stages"
+            ]
+        }
+    },
+    "objects": {
+        "paths": {
+            ".json": [
+                "objects/*", "objects/decomposed/*"
+            ]
+        }
+    },
+    "scene_instances": {
+        "default_attributes": {
+            "default_lighting": "",
+            "semantic_scene_instance": "hssd_ssd_map"
+        },
+        "paths": {
+            ".json": [
+                "scenes"
+            ]
+        }
+    },
+    "semantic_scene_descriptor_instances": {
+        "hssd_ssd_map": "semantics/hssd-hab_semantic_lexicon.json"
+    }
+}

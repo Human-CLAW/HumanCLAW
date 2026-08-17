@@ -1,0 +1,205 @@
+diff --git a/src/deps/bullet3/src/BulletDynamics/Featherstone/btMultiBody.cpp b/src/deps/bullet3/src/BulletDynamics/Featherstone/btMultiBody.cpp
+index d7588aedc..5f4b5c907 100644
+--- a/src/deps/bullet3/src/BulletDynamics/Featherstone/btMultiBody.cpp
++++ b/src/deps/bullet3/src/BulletDynamics/Featherstone/btMultiBody.cpp
+@@ -757,6 +757,10 @@ void btMultiBody::computeAccelerationsArticulatedBodyAlgorithmMultiDof(btScalar
+ 	const btScalar DAMPING_K1_ANGULAR = m_angularDamping;
+ 	const btScalar DAMPING_K2_ANGULAR = m_angularDamping;
+ 
++	// HalfPhysics prescribes free motion through velocities. Keep ABA inertia
++	// bookkeeping, but do not let free-motion bias forces create qdd.
++	const bool ignoreFreeMotionBias = !isConstraintPass;
++
+ 	const btVector3 base_vel = getBaseVel();
+ 	const btVector3 base_omega = getBaseOmega();
+ 
+@@ -832,22 +836,29 @@ void btMultiBody::computeAccelerationsArticulatedBodyAlgorithmMultiDof(btScalar
+ 	}
+ 	else
+ 	{
+-		const btVector3 &baseForce = isConstraintPass ? m_baseConstraintForce : m_baseForce;
+-		const btVector3 &baseTorque = isConstraintPass ? m_baseConstraintTorque : m_baseTorque;
+-		//external forces
+-		zeroAccSpatFrc[0].setVector(-(rot_from_parent[0] * baseTorque), -(rot_from_parent[0] * baseForce));
++		if (ignoreFreeMotionBias)
++		{
++			zeroAccSpatFrc[0].setZero();
++		}
++		else
++		{
++			const btVector3 &baseForce = isConstraintPass ? m_baseConstraintForce : m_baseForce;
++			const btVector3 &baseTorque = isConstraintPass ? m_baseConstraintTorque : m_baseTorque;
++			//external forces
++			zeroAccSpatFrc[0].setVector(-(rot_from_parent[0] * baseTorque), -(rot_from_parent[0] * baseForce));
+ 
+-		//adding damping terms (only)
+-		const btScalar linDampMult = 1., angDampMult = 1.;
+-		zeroAccSpatFrc[0].addVector(angDampMult * m_baseInertia * spatVel[0].getAngular() * (DAMPING_K1_ANGULAR + DAMPING_K2_ANGULAR * spatVel[0].getAngular().safeNorm()),
+-									linDampMult * m_baseMass * spatVel[0].getLinear() * (DAMPING_K1_LINEAR + DAMPING_K2_LINEAR * spatVel[0].getLinear().safeNorm()));
++			//adding damping terms (only)
++			const btScalar linDampMult = 1., angDampMult = 1.;
++			zeroAccSpatFrc[0].addVector(angDampMult * m_baseInertia * spatVel[0].getAngular() * (DAMPING_K1_ANGULAR + DAMPING_K2_ANGULAR * spatVel[0].getAngular().safeNorm()),
++										linDampMult * m_baseMass * spatVel[0].getLinear() * (DAMPING_K1_LINEAR + DAMPING_K2_LINEAR * spatVel[0].getLinear().safeNorm()));
+ 
+-		//
+-		//p += vhat x Ihat vhat - done in a simpler way
+-		if (m_useGyroTerm)
+-			zeroAccSpatFrc[0].addAngular(spatVel[0].getAngular().cross(m_baseInertia * spatVel[0].getAngular()));
+-		//
+-		zeroAccSpatFrc[0].addLinear(m_baseMass * spatVel[0].getAngular().cross(spatVel[0].getLinear()));
++			//
++			//p += vhat x Ihat vhat - done in a simpler way
++			if (m_useGyroTerm)
++				zeroAccSpatFrc[0].addAngular(spatVel[0].getAngular().cross(m_baseInertia * spatVel[0].getAngular()));
++			//
++			zeroAccSpatFrc[0].addLinear(m_baseMass * spatVel[0].getAngular().cross(spatVel[0].getLinear()));
++		}
+ 	}
+ 
+ 	//init the spatial AB inertia (it has the simple form thanks to choosing local body frames origins at their COMs)
+@@ -899,6 +910,8 @@ void btMultiBody::computeAccelerationsArticulatedBodyAlgorithmMultiDof(btScalar
+ 
+ 		// we can now calculate chat_i
+ 		spatVel[i + 1].cross(spatJointVel, spatCoriolisAcc[i]);
++		if (ignoreFreeMotionBias)
++			spatCoriolisAcc[i].setZero();
+ 
+ 		// calculate zhat_i^A
+ 		//
+@@ -907,36 +920,43 @@ void btMultiBody::computeAccelerationsArticulatedBodyAlgorithmMultiDof(btScalar
+ 			zeroAccSpatFrc[i].setZero();
+ 		}
+ 		else{
+-			//external forces
+-			btVector3 linkAppliedForce = isConstraintPass ? m_links[i].m_appliedConstraintForce : m_links[i].m_appliedForce;
+-			btVector3 linkAppliedTorque = isConstraintPass ? m_links[i].m_appliedConstraintTorque : m_links[i].m_appliedTorque;
++			if (ignoreFreeMotionBias)
++			{
++				zeroAccSpatFrc[i + 1].setZero();
++			}
++			else
++			{
++				//external forces
++				btVector3 linkAppliedForce = isConstraintPass ? m_links[i].m_appliedConstraintForce : m_links[i].m_appliedForce;
++				btVector3 linkAppliedTorque = isConstraintPass ? m_links[i].m_appliedConstraintTorque : m_links[i].m_appliedTorque;
+ 
+-			zeroAccSpatFrc[i + 1].setVector(-(rot_from_world[i + 1] * linkAppliedTorque), -(rot_from_world[i + 1] * linkAppliedForce));
++				zeroAccSpatFrc[i + 1].setVector(-(rot_from_world[i + 1] * linkAppliedTorque), -(rot_from_world[i + 1] * linkAppliedForce));
+ 
+ #if 0	
+-			{
++				{
+ 
+-				b3Printf("stepVelocitiesMultiDof zeroAccSpatFrc[%d] linear:%f,%f,%f, angular:%f,%f,%f",
+-				i+1,
+-				zeroAccSpatFrc[i+1].m_topVec[0],
+-				zeroAccSpatFrc[i+1].m_topVec[1],
+-				zeroAccSpatFrc[i+1].m_topVec[2],
++					b3Printf("stepVelocitiesMultiDof zeroAccSpatFrc[%d] linear:%f,%f,%f, angular:%f,%f,%f",
++					i+1,
++					zeroAccSpatFrc[i+1].m_topVec[0],
++					zeroAccSpatFrc[i+1].m_topVec[1],
++					zeroAccSpatFrc[i+1].m_topVec[2],
+ 
+-				zeroAccSpatFrc[i+1].m_bottomVec[0],
+-				zeroAccSpatFrc[i+1].m_bottomVec[1],
+-				zeroAccSpatFrc[i+1].m_bottomVec[2]);
+-			}
++					zeroAccSpatFrc[i+1].m_bottomVec[0],
++					zeroAccSpatFrc[i+1].m_bottomVec[1],
++					zeroAccSpatFrc[i+1].m_bottomVec[2]);
++				}
+ #endif
+-			//
+-			//adding damping terms (only)
+-			btScalar linDampMult = 1., angDampMult = 1.;
+-			zeroAccSpatFrc[i + 1].addVector(angDampMult * m_links[i].m_inertiaLocal * spatVel[i + 1].getAngular() * (DAMPING_K1_ANGULAR + DAMPING_K2_ANGULAR * spatVel[i + 1].getAngular().safeNorm()),
+-											linDampMult * m_links[i].m_mass * spatVel[i + 1].getLinear() * (DAMPING_K1_LINEAR + DAMPING_K2_LINEAR * spatVel[i + 1].getLinear().safeNorm()));
+-			//p += vhat x Ihat vhat - done in a simpler way
+-			if (m_useGyroTerm)
+-				zeroAccSpatFrc[i + 1].addAngular(spatVel[i + 1].getAngular().cross(m_links[i].m_inertiaLocal * spatVel[i + 1].getAngular()));
+-			//
+-			zeroAccSpatFrc[i + 1].addLinear(m_links[i].m_mass * spatVel[i + 1].getAngular().cross(spatVel[i + 1].getLinear()));
++				//
++				//adding damping terms (only)
++				btScalar linDampMult = 1., angDampMult = 1.;
++				zeroAccSpatFrc[i + 1].addVector(angDampMult * m_links[i].m_inertiaLocal * spatVel[i + 1].getAngular() * (DAMPING_K1_ANGULAR + DAMPING_K2_ANGULAR * spatVel[i + 1].getAngular().safeNorm()),
++												linDampMult * m_links[i].m_mass * spatVel[i + 1].getLinear() * (DAMPING_K1_LINEAR + DAMPING_K2_LINEAR * spatVel[i + 1].getLinear().safeNorm()));
++				//p += vhat x Ihat vhat - done in a simpler way
++				if (m_useGyroTerm)
++					zeroAccSpatFrc[i + 1].addAngular(spatVel[i + 1].getAngular().cross(m_links[i].m_inertiaLocal * spatVel[i + 1].getAngular()));
++				//
++				zeroAccSpatFrc[i + 1].addLinear(m_links[i].m_mass * spatVel[i + 1].getAngular().cross(spatVel[i + 1].getLinear()));
++			}
+ 			//
+ 			//btVector3 temp = m_links[i].m_mass * spatVel[i+1].getAngular().cross(spatVel[i+1].getLinear());
+ 			////clamp parent's omega
+@@ -983,7 +1003,8 @@ void btMultiBody::computeAccelerationsArticulatedBodyAlgorithmMultiDof(btScalar
+ 			//
+ 			hDof = spatInertia[i + 1] * m_links[i].m_axes[dof];
+ 			//
+-			Y[m_links[i].m_dofOffset + dof] = m_links[i].m_jointTorque[dof] - m_links[i].m_axes[dof].dot(zeroAccSpatFrc[i + 1]) - spatCoriolisAcc[i].dot(hDof);
++			const btScalar jointTorque = ignoreFreeMotionBias ? btScalar(0) : m_links[i].m_jointTorque[dof];
++			Y[m_links[i].m_dofOffset + dof] = jointTorque - m_links[i].m_axes[dof].dot(zeroAccSpatFrc[i + 1]) - spatCoriolisAcc[i].dot(hDof);
+ 		}
+ 		for (int dof = 0; dof < m_links[i].m_dofCount; ++dof)
+ 		{
+@@ -1187,7 +1208,8 @@ void btMultiBody::computeAccelerationsArticulatedBodyAlgorithmMultiDof(btScalar
+ 	output[1] = omegadot_out[1];
+ 	output[2] = omegadot_out[2];
+ 
+-	const btVector3 vdot_out = rot_from_parent[0].transpose() * (spatAcc[0].getLinear() + spatVel[0].getAngular().cross(spatVel[0].getLinear()));
++	const btVector3 baseVelocityBias = ignoreFreeMotionBias ? btVector3(0, 0, 0) : spatVel[0].getAngular().cross(spatVel[0].getLinear());
++	const btVector3 vdot_out = rot_from_parent[0].transpose() * (spatAcc[0].getLinear() + baseVelocityBias);
+ 	output[3] = vdot_out[0];
+ 	output[4] = vdot_out[1];
+ 	output[5] = vdot_out[2];
+@@ -1212,11 +1234,11 @@ void btMultiBody::computeAccelerationsArticulatedBodyAlgorithmMultiDof(btScalar
+ 
+ 	// Final step: add the accelerations (times dt) to the velocities.
+ 
+-	if (!isConstraintPass)
+-	{
+-		if (dt > 0.)
+-			applyDeltaVeeMultiDof(output, dt);
+-	}
++	// if (!isConstraintPass)
++	// {
++	// 	if (dt > 0.)
++	// 		applyDeltaVeeMultiDof(output, dt);
++	// }
+ 	/////
+ 	//btScalar angularThres = 1;
+ 	//btScalar maxAngVel = 0.;
+diff --git a/src/deps/bullet3/src/BulletDynamics/Featherstone/btMultiBodySphericalJointMotor.cpp b/src/deps/bullet3/src/BulletDynamics/Featherstone/btMultiBodySphericalJointMotor.cpp
+index 00a7ef357..630d58ede 100644
+--- a/src/deps/bullet3/src/BulletDynamics/Featherstone/btMultiBodySphericalJointMotor.cpp
++++ b/src/deps/bullet3/src/BulletDynamics/Featherstone/btMultiBodySphericalJointMotor.cpp
+@@ -164,8 +164,8 @@ btQuaternion relRot = currentQuat.inverse() * desiredQuat;
+ 						posError,
+ 						infoGlobal,
+ 						-max_applied_impulse, max_applied_impulse, true,
+-						1.0, false, 0, 0,
+-						m_damping[row % 3]);
++						1.0, false, desiredVelocity, 0,
++						0);
+ 					constraintRow.m_orgConstraint = this;
+ 					constraintRow.m_orgDofIndex = row;
+ 					break;
+diff --git a/src/esp/physics/bullet/BulletURDFImporter.cpp b/src/esp/physics/bullet/BulletURDFImporter.cpp
+index 8b584b41..c76bf872 100644
+--- a/src/esp/physics/bullet/BulletURDFImporter.cpp
++++ b/src/esp/physics/bullet/BulletURDFImporter.cpp
+@@ -23,8 +23,10 @@ namespace Cr = Corrade;
+ namespace esp {
+ namespace physics {
+ 
+-// TODO: make this configurable?
+-static float gUrdfDefaultCollisionMargin = 0.001;
++// TODO: make this configurable from articulated-object attributes.
++// HalfPhysics uses mesh URDF links for the human body; a 1cm skin makes
++// contacts appear earlier and reduces discrete tunneling against scene meshes.
++static float gUrdfDefaultCollisionMargin = 0.01;
+ 
+ btCollisionShape* BulletURDFImporter::convertURDFToCollisionShape(
+     const metadata::URDF::CollisionShape* collision,

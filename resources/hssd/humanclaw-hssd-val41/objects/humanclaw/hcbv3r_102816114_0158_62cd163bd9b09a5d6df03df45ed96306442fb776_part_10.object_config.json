@@ -1,0 +1,17 @@
+{
+  "render_asset": "hcbv3r_102816114_0158_62cd163bd9b09a5d6df03df45ed96306442fb776_part_10_render_asset_62cd163bd9b09a5d6df03df45ed96306442fb776_part_10_positive_scale.glb",
+  "up": [
+    0,
+    1,
+    0
+  ],
+  "front": [
+    0,
+    0,
+    -1
+  ],
+  "semantic_id": 3,
+  "friction_coefficient": 1.0,
+  "restitution_coefficient": 0.0,
+  "mass": 0.2
+}
