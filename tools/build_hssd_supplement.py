@@ -163,7 +163,7 @@ def _parse_args() -> argparse.Namespace:
         help="flat directory containing the 1,693 validated baked GLB files",
     )
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--repo-id", default="Human-CLAW/HumanCLAW-HSSD")
+    parser.add_argument("--repo-id", default="HumanCLAW/HumanCLAW-HSSD")
     parser.add_argument("--release-manifest", type=Path, default=None)
     return parser.parse_args()
 

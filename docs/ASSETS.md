@@ -79,7 +79,7 @@ eight control-only skill states selected from exact step 1,500,000. There is no
 
 The nine inference files are distributed as
 `HumanCLAW_pretrained_weights_paper_fullval_v1_20260816.tar.gz` in the
-`Human-CLAW/HumanCLAW` Hugging Face model repository. The archive SHA-256 is
+`HumanCLAW/HumanCLAW` Hugging Face model repository. The archive SHA-256 is
 `3b3c0c1b232af4c462301655de909a4bc54fd4756bcd42c22e7965fccb650667`.
 
 | Skill | Network | Conditioning |

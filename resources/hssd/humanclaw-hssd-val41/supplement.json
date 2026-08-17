@@ -6782,7 +6782,7 @@
   },
   "hf": {
     "filename": "hssd/humanclaw-hssd-val41-supplement-v1.tar.gz",
-    "repo_id": "Human-CLAW/HumanCLAW-HSSD",
+    "repo_id": "HumanCLAW/HumanCLAW-HSSD",
     "repo_type": "dataset"
   },
   "logical_size_bytes": 184310072,

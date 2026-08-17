@@ -71,7 +71,7 @@ canonical MotionDiT state、两个可确定重建的 numerical base variant，�
 八个从准确 step 1,500,000 选出的 control-only skill state，不会解析
 `latest`。
 
-九个 inference 文件通过 `Human-CLAW/HumanCLAW` Hugging Face model repository
+九个 inference 文件通过 `HumanCLAW/HumanCLAW` Hugging Face model repository
 中的 `HumanCLAW_pretrained_weights_paper_fullval_v1_20260816.tar.gz` 发布；归档
 SHA-256 为
 `3b3c0c1b232af4c462301655de909a4bc54fd4756bcd42c22e7965fccb650667`。

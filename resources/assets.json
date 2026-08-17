@@ -1,73 +1,73 @@
 {
-  "schema": "humanclaw_asset_manifest_v1",
-  "profile": "paper_fullval_v1",
   "files": [
     {
       "path": "resources/benchmark/val100.json",
-      "size_bytes": 11930,
-      "sha256": "1f2e5362d98f0e16aff5a507929d86436412df2bacca3bbfbbdc7ef166284aa7"
+      "sha256": "1f2e5362d98f0e16aff5a507929d86436412df2bacca3bbfbbdc7ef166284aa7",
+      "size_bytes": 11930
     },
     {
       "path": "resources/provenance/spawn_repair_history_20260806_v2.csv",
-      "size_bytes": 30853,
-      "sha256": "5d9a772a3723ac36410be798d878d6fa58829eb6c3c00339c5aa15f3058feae8"
+      "sha256": "5d9a772a3723ac36410be798d878d6fa58829eb6c3c00339c5aa15f3058feae8",
+      "size_bytes": 30853
     },
     {
       "path": "resources/seeds/natural_beta0_fk_seed.pt",
-      "size_bytes": 6411,
-      "sha256": "2944205692ef319e565115d89d7e8058913d6b6b636cb9f9eae0390b82cb6cda"
+      "sha256": "2944205692ef319e565115d89d7e8058913d6b6b636cb9f9eae0390b82cb6cda",
+      "size_bytes": 6411
     },
     {
       "path": "resources/metrics/smpl_neutral_body22.json",
-      "size_bytes": 2325,
-      "sha256": "924f5c492cf73b831bf1bf545b7563fb5697064887202c1af75fb5bd11977e52"
+      "sha256": "924f5c492cf73b831bf1bf545b7563fb5697064887202c1af75fb5bd11977e52",
+      "size_bytes": 2325
     },
     {
       "path": "resources/motion/training/paper_training_v1.json",
-      "size_bytes": 3161,
-      "sha256": "157b77fda6155de65ce38aa53224639380fe63d0c5f29d0c3414ce01db224adc"
+      "sha256": "157b77fda6155de65ce38aa53224639380fe63d0c5f29d0c3414ce01db224adc",
+      "size_bytes": 3161
     },
     {
       "path": "resources/weights/paper_fullval_v1.json",
-      "size_bytes": 8340,
-      "sha256": "2186946625ed73698c520a2db880f297077d9ab3b86a3b505d1fa41ae2bc4081"
+      "sha256": "2186946625ed73698c520a2db880f297077d9ab3b86a3b505d1fa41ae2bc4081",
+      "size_bytes": 8340
     },
     {
       "path": "patches/habitat-sim/humanclaw_halfphysics.patch",
-      "size_bytes": 10178,
-      "sha256": "6f57ec8130b4ccca7d208a0754ba691d52e44b469cd6dcee220fa193fcad6766"
+      "sha256": "6f57ec8130b4ccca7d208a0754ba691d52e44b469cd6dcee220fa193fcad6766",
+      "size_bytes": 10178
     },
     {
       "path": "src/humanclaw_bench/envs/half_physics/humanclaw.physics_config.json",
-      "size_bytes": 233,
-      "sha256": "6fa31de4506a2d7c73b04d0026334ec639fa39f345ad6a43dc2fb63cf12ca811"
+      "sha256": "6fa31de4506a2d7c73b04d0026334ec639fa39f345ad6a43dc2fb63cf12ca811",
+      "size_bytes": 233
     }
   ],
+  "profile": "paper_fullval_v1",
+  "schema": "humanclaw_asset_manifest_v1",
+  "tree_hash_algorithm": "sha256 of concatenated '<file_sha256>  ./<relative_posix_path>\\n' records sorted by relative path",
   "trees": [
     {
-      "path": "resources/agent/neutral_beta0_handmerged",
       "file_count": 32,
-      "size_bytes": 410956,
-      "sha256": "30d56f98d08e081fb308f727dc6930a11888c863c24b541869955222ae6bc652"
+      "path": "resources/agent/neutral_beta0_handmerged",
+      "sha256": "30d56f98d08e081fb308f727dc6930a11888c863c24b541869955222ae6bc652",
+      "size_bytes": 410956
     },
     {
-      "path": "resources/benchmark/episodes",
       "file_count": 42,
-      "size_bytes": 6071362,
-      "sha256": "ca4c53c384ab5fca1e7d6771d86dcafeeaf1a8fd28bb30ea421dadb1c36c6ad0"
+      "path": "resources/benchmark/episodes",
+      "sha256": "ca4c53c384ab5fca1e7d6771d86dcafeeaf1a8fd28bb30ea421dadb1c36c6ad0",
+      "size_bytes": 6071362
     },
     {
-      "path": "resources/motion/training/manifests",
       "file_count": 8,
-      "size_bytes": 1673707,
-      "sha256": "f1a974c9004e40d9a2f4afc132724b79b8d9fa8146c2e394dd6ae2305aba28c3"
+      "path": "resources/motion/training/manifests",
+      "sha256": "f1a974c9004e40d9a2f4afc132724b79b8d9fa8146c2e394dd6ae2305aba28c3",
+      "size_bytes": 1673707
     },
     {
-      "path": "resources/hssd/humanclaw-hssd-val41",
       "file_count": 14581,
-      "size_bytes": 16560042,
-      "sha256": "0b20f9cdba4d3d1f79cce60e36d66690b9dbfc426e8bd56fff525f39192070d2"
+      "path": "resources/hssd/humanclaw-hssd-val41",
+      "sha256": "95aa238dfa9b7a9cf217004589faacf613ea9eeacb5bce674bbe830ed0e4650c",
+      "size_bytes": 16560041
     }
-  ],
-  "tree_hash_algorithm": "sha256 of concatenated '<file_sha256>  ./<relative_posix_path>\\n' records sorted by relative path"
+  ]
 }

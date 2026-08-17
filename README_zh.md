@@ -7,11 +7,11 @@ HumanClawBench 在 41 个 HSSD scene、1,218 个 find–navigate–interact epis
 
 Release assets：
 
-- Code：<https://github.com/Human-CLAW/HumanClawBench>
+- Code：<https://github.com/HumanCLAW/HumanClawBench>
 - Motion weights（`paper_fullval_v1`）：
-  <https://huggingface.co/Human-CLAW/HumanCLAW>
+  <https://huggingface.co/HumanCLAW/HumanCLAW>
 - HSSD supplement（gated dataset）：
-  <https://huggingface.co/datasets/Human-CLAW/HumanCLAW-HSSD>
+  <https://huggingface.co/datasets/HumanCLAW/HumanCLAW-HSSD>
 
 ## 快速开始
 
@@ -150,7 +150,7 @@ humanclaw-bench prepare-hssd --hssd-root /path/to/hssd-hab
 该命令按大小和 SHA-256 验证每个 mesh，将官方 HSSD asset 与固定版本的 1,693
 个 HumanClaw 补充 mesh 合并，复制 HumanClaw scene 和 per-instance object
 JSON，并 symlink mesh、stage 和 semantic 文件。首次运行会从 gated
-`Human-CLAW/HumanCLAW-HSSD` dataset 下载 79.8 MiB 压缩包，并将校验后的解压
+`HumanCLAW/HumanCLAW-HSSD` dataset 下载 79.8 MiB 压缩包，并将校验后的解压
 内容保存在 `~/.cache/humanclaw-bench/assets/`。这样会保留 baked scale 修正，
 以及以精细 render mesh 作为 collision mesh 的配置；不会静默退回官方的粗略
 collider。原始 HSSD 安装不会被修改。默认输出为
@@ -189,7 +189,7 @@ episode。论文报告仍使用全部 1,218 个 episode。
 
 ```bash
 cd ..
-hf download Human-CLAW/HumanCLAW \
+hf download HumanCLAW/HumanCLAW \
   HumanCLAW_pretrained_weights_paper_fullval_v1_20260816.tar.gz \
   --local-dir .
 tar -xzf HumanCLAW_pretrained_weights_paper_fullval_v1_20260816.tar.gz

@@ -15,7 +15,7 @@ and manifest:
   supplemental asset.
 
 `humanclaw-bench prepare-hssd` downloads the pinned supplement from the gated
-`Human-CLAW/HumanCLAW-HSSD` dataset when it is not cached, verifies the archive
+`HumanCLAW/HumanCLAW-HSSD` dataset when it is not cached, verifies the archive
 and every GLB, copies the explicit JSON files, and links matching official and
 supplemental meshes, stages, and semantics. The supplement preserves baked
 instance scales and exact render-mesh colliders; the command fails instead of

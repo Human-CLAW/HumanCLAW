@@ -32,7 +32,7 @@ def test_release_hssd_modifications_are_complete():
     assert len(supplement["files"]) == 1693
     assert supplement["hf"] == {
         "filename": "hssd/humanclaw-hssd-val41-supplement-v1.tar.gz",
-        "repo_id": "Human-CLAW/HumanCLAW-HSSD",
+        "repo_id": "HumanCLAW/HumanCLAW-HSSD",
         "repo_type": "dataset",
     }
     assert modifications["legacy_supplemental_paths"] == []

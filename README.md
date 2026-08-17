@@ -7,11 +7,11 @@ find–navigate–interact episodes across 41 HSSD scenes.
 
 Release assets:
 
-- Code: <https://github.com/Human-CLAW/HumanClawBench>
+- Code: <https://github.com/HumanCLAW/HumanClawBench>
 - Motion weights (`paper_fullval_v1`):
-  <https://huggingface.co/Human-CLAW/HumanCLAW>
+  <https://huggingface.co/HumanCLAW/HumanCLAW>
 - HSSD supplement (gated dataset):
-  <https://huggingface.co/datasets/Human-CLAW/HumanCLAW-HSSD>
+  <https://huggingface.co/datasets/HumanCLAW/HumanCLAW-HSSD>
 
 ## Quick start
 
@@ -153,7 +153,7 @@ The command validates every mesh by size and SHA-256, combines the official
 HSSD assets with the pinned 1,693-mesh HumanClaw supplement, copies the
 HumanClaw scene and per-instance object JSON files, and symlinks the meshes,
 stages, and semantics. On first use it downloads the 79.8 MiB compressed
-supplement from the gated `Human-CLAW/HumanCLAW-HSSD` dataset and stores its
+supplement from the gated `HumanCLAW/HumanCLAW-HSSD` dataset and stores its
 verified extraction under `~/.cache/humanclaw-bench/assets/`. This preserves
 baked scale fixes and cases that use the render mesh for collision; it does
 not silently substitute an official coarse collider. The original HSSD
@@ -195,7 +195,7 @@ repository and extract it from the parent directory of this source tree:
 
 ```bash
 cd ..
-hf download Human-CLAW/HumanCLAW \
+hf download HumanCLAW/HumanCLAW \
   HumanCLAW_pretrained_weights_paper_fullval_v1_20260816.tar.gz \
   --local-dir .
 tar -xzf HumanCLAW_pretrained_weights_paper_fullval_v1_20260816.tar.gz

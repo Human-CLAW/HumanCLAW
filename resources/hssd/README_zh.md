@@ -13,7 +13,7 @@
 - `asset_requirements.json`：全部官方及补充 asset 的名称、大小和 hash。
 
 `humanclaw-bench prepare-hssd` 在 cache 缺失时从 gated
-`Human-CLAW/HumanCLAW-HSSD` dataset 下载固定 supplement，校验归档及每个 GLB，
+`HumanCLAW/HumanCLAW-HSSD` dataset 下载固定 supplement，校验归档及每个 GLB，
 复制明确列出的 JSON，并链接匹配的官方及补充 mesh、stage 和 semantic 文件。
 补充 mesh 保留 baked instance scale 和精确 render-mesh collider；任何预期
 文件或 hash 缺失时命令会失败，而不会静默替换为粗略的官方 collider。离线
