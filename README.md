@@ -22,6 +22,12 @@
 
 On top of the framework, **HumanCLAW-Bench** provides **1,218 long-horizon, egocentric `find–navigate–interact` episodes across 41 indoor scenes**. Across nine state-of-the-art VLMs, none solves the benchmark—the best model reaches only a **16.8%** success rate. What current VLMs lack is **embodied self-awareness**: they lose track of the body they control—where it is, whether it has arrived, and when it has collided with the world.
 
+## 💥 News
+
+- **[2026.08.17]** 🔥 **Full release!** The complete evaluation harness and benchmark code are now open-sourced in this repository.
+- **[2026.08.17]** 🤗 [Motion weights](https://huggingface.co/HumanCLAW/HumanCLAW) and the [HSSD supplement](https://huggingface.co/datasets/HumanCLAW/HumanCLAW-HSSD) are now accessible on Hugging Face.
+- **[2026.07.29]** 📄 Our paper is now accessible at [arXiv:2607.27180](https://arxiv.org/abs/2607.27180).
+
 HumanClawBench evaluates a vision-language model as a full-body agent in 1,218
 find–navigate–interact episodes across 41 HSSD scenes.
 
