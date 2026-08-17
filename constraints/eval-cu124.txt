@@ -1,0 +1,13 @@
+# Top-level versions validated for the public A100/CUDA 12.4 rollout path.
+# Install the CUDA 12.4 PyTorch wheel first as shown in README.md, then pass
+# this file to pip with: -c constraints/eval-cu124.txt
+torch==2.6.0
+triton==3.2.0
+sympy==1.13.1
+numpy==1.26.4
+scipy==1.15.3
+Pillow==10.4.0
+openai==3.1.0
+huggingface-hub==1.27.0
+pytest==9.1.1
+imageio-ffmpeg==0.6.0

@@ -110,6 +110,12 @@ def _build_parser() -> argparse.ArgumentParser:
     rollout.add_argument("--n-rollouts", type=int, default=1)
     rollout.add_argument("--device", default=None)
     rollout.add_argument(
+        "--max-steps",
+        type=int,
+        default=None,
+        help="override the profile episode limit for a bounded runtime smoke",
+    )
+    rollout.add_argument(
         "--save-video",
         "--video",
         dest="save_video",

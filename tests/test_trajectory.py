@@ -4,7 +4,41 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from humanclaw_bench.evaluation.trajectory import TrajectoryRecorder
+from humanclaw_bench.evaluation.trajectory import (
+    TrajectoryRecorder,
+    build_replay_metadata,
+)
+
+
+def test_replay_metadata_records_execution_paths() -> None:
+    """Persist optional paths that change pre-motion simulator queries."""
+
+    episode = SimpleNamespace(
+        episode_id="0",
+        scene_id="scene.json",
+        scene_label="scene",
+        scene_dataset_config="dataset.json",
+        object_category="chair",
+        init_offset=(0.0, 0.0, 0.0),
+        init_yaw=0.0,
+        max_steps=100,
+    )
+    env = SimpleNamespace(
+        half_physics_backend="hp",
+        video_enabled=True,
+        compute_metrics=True,
+    )
+    metadata = build_replay_metadata(
+        profile_name="paper_fullval_v1",
+        episode=episode,
+        rollout_index=0,
+        env=env,
+    )
+    assert metadata["execution"] == {
+        "video_enabled": True,
+        "compute_metrics": True,
+        "pre_motion_metric_reset": True,
+    }
 
 
 def test_before_after_bundle_contains_replay_state_and_all_dynamic_objects(tmp_path):

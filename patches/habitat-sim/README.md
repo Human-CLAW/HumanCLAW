@@ -30,9 +30,23 @@ The evaluated runtime uses all three build options: **headless**, **CUDA**, and
 Bullet performs the rigid-body simulation on the CPU.
 
 Before building, make sure the active host provides Git, CMake, a C++ compiler,
-and `nvcc`. Ninja is optional but substantially shortens a clean build. Also
-verify that the PyTorch installed in the HumanClawBench environment can see a
-GPU:
+`nvcc`, and OpenGL/EGL/GLX development headers and linker stubs. These graphics
+development files are still required for a headless EGL build. On Ubuntu, the
+validated package set is:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+  build-essential cmake ninja-build \
+  libglvnd-dev libgl-dev libegl-dev libglx-dev libopengl-dev \
+  libgles-dev libglu1-mesa-dev
+```
+
+On a host without root access, the same headers and libraries may be extracted
+into a local sysroot and supplied through `CPATH`, `LIBRARY_PATH`, and
+`LD_LIBRARY_PATH`. Ninja is optional but substantially shortens a clean build.
+Also verify that the PyTorch installed in the HumanClawBench environment can
+see a GPU:
 
 ```bash
 git --version
@@ -53,10 +67,15 @@ git apply --check /absolute/path/to/HumanClawBench/patches/habitat-sim/humanclaw
 git apply /absolute/path/to/HumanClawBench/patches/habitat-sim/humanclaw_halfphysics.patch
 
 python -m pip install -r requirements.txt
-python setup.py build_ext --inplace --headless --with-cuda --bullet
-python -m pip install -e .
+python setup.py build_ext --inplace --headless --with-cuda --bullet --cache-args
+HEADLESS=True WITH_CUDA=True WITH_BULLET=True python -m pip install -e .
 python -m pip install -e build/deps/magnum-bindings/src/python
 ```
+
+The explicit environment variables on the editable-install command are
+intentional: `pip install -e .` can invoke another native build, and Habitat's
+pip defaults do not enable CUDA. The cached setup arguments preserve any
+additional CMake options from the first build.
 
 Verify the native extension before preparing HSSD or starting a rollout:
 
@@ -93,6 +112,19 @@ export LD_LIBRARY_PATH="${NVIDIA_SITE}/cuda_runtime/lib:${NVIDIA_SITE}/curand/li
 python setup.py build_ext --inplace --headless --with-cuda --bullet \
   --cmake-args="-DCUDART_LIBRARY=${NVIDIA_SITE}/cuda_runtime/lib/libcudart.so.12"
 ```
+
+Recent CMake releases can reject policy versions used by Habitat-Sim's pinned
+third-party dependencies (for example zstd). If configuration stops with a
+compatibility-policy error, retain the same build flags and add:
+
+```bash
+python setup.py build_ext --inplace --headless --with-cuda --bullet \
+  --cache-args --cmake \
+  --cmake-args="-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+```
+
+This selects CMake's compatibility floor; it does not change the pinned
+Habitat-Sim, Bullet, or HumanCLAW source revisions.
 
 Habitat-Sim automatically uses `ccache` when it is discoverable. If the
 installed `ccache` executable itself fails, disable only that optional wrapper

@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +38,7 @@ class RenderContract:
     physics: dict[str, Any]
     rendering: dict[str, Any]
     assets: dict[str, Any]
+    execution: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -100,6 +101,7 @@ def load_render_contract(rollout_dir: str | Path) -> RenderContract:
         physics=physics,
         rendering=rendering,
         assets=dict(value.get("assets") or {}),
+        execution=dict(value.get("execution") or {}),
     )
 
 

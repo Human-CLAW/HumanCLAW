@@ -30,9 +30,21 @@ spherical joint motor。
 因此，即使 Bullet 的刚体模拟在 CPU 上运行，CUDA 也不是 release 构建中可省略
 的选项。
 
-构建前请确认当前机器提供 Git、CMake、C++ compiler 和 `nvcc`。Ninja 不是
-必需项，但能明显缩短干净构建时间。同时确认 HumanClawBench 环境中的 PyTorch
-能识别 GPU：
+构建前请确认当前机器提供 Git、CMake、C++ compiler、`nvcc`，以及 OpenGL、
+EGL、GLX development header 和 linker stub。即使是 headless EGL 构建也需要
+这些 graphics development file。Ubuntu 上验证过的 package 为：
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+  build-essential cmake ninja-build \
+  libglvnd-dev libgl-dev libegl-dev libglx-dev libopengl-dev \
+  libgles-dev libglu1-mesa-dev
+```
+
+若没有 root 权限，可将相同 header/library 解压到本地 sysroot，并通过 `CPATH`、
+`LIBRARY_PATH` 和 `LD_LIBRARY_PATH` 提供。Ninja 不是必需项，但能明显缩短
+干净构建时间。同时确认 HumanClawBench 环境中的 PyTorch 能识别 GPU：
 
 ```bash
 git --version
@@ -53,10 +65,14 @@ git apply --check /absolute/path/to/HumanClawBench/patches/habitat-sim/humanclaw
 git apply /absolute/path/to/HumanClawBench/patches/habitat-sim/humanclaw_halfphysics.patch
 
 python -m pip install -r requirements.txt
-python setup.py build_ext --inplace --headless --with-cuda --bullet
-python -m pip install -e .
+python setup.py build_ext --inplace --headless --with-cuda --bullet --cache-args
+HEADLESS=True WITH_CUDA=True WITH_BULLET=True python -m pip install -e .
 python -m pip install -e build/deps/magnum-bindings/src/python
 ```
+
+Editable install 命令上的环境变量不能省略：`pip install -e .` 可能再次触发 native
+build，而 Habitat 的 pip 默认值不会启用 CUDA。首轮构建缓存的 setup 参数会保留
+额外的 CMake 选项。
 
 准备 HSSD 或开始 rollout 前，先验证 native extension：
 
@@ -91,6 +107,19 @@ export LD_LIBRARY_PATH="${NVIDIA_SITE}/cuda_runtime/lib:${NVIDIA_SITE}/curand/li
 python setup.py build_ext --inplace --headless --with-cuda --bullet \
   --cmake-args="-DCUDART_LIBRARY=${NVIDIA_SITE}/cuda_runtime/lib/libcudart.so.12"
 ```
+
+新版 CMake 可能拒绝 Habitat-Sim 固定 third-party dependency（例如 zstd）使用的
+旧 policy version。如果 configure 因 compatibility policy 报错，请保持其他
+build flag 不变并增加：
+
+```bash
+python setup.py build_ext --inplace --headless --with-cuda --bullet \
+  --cache-args --cmake \
+  --cmake-args="-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+```
+
+该参数只选择 CMake compatibility floor，不会改变固定的 Habitat-Sim、Bullet
+或 HumanCLAW source revision。
 
 Habitat-Sim 会自动使用可发现的 `ccache`。若失败的是 `ccache` 程序本身，只禁用
 这个可选 wrapper，保持其他构建选项不变：
