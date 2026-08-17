@@ -50,6 +50,20 @@ semantic rendering、contact query 或任何 metric accumulation。
 [指标定义](docs/METRICS_zh.md)、[视频工具](docs/VIDEOS_zh.md)和
 [模型接口约定](docs/MODELS_zh.md)。
 
+## 基准难度
+
+每个 episode 都带一个难度标签，由出生点到目标物体之间最短无碰撞路径的三个
+属性构成：路径的测地距离、沿途的选择点数量（转弯数加经过的房间数）、以及
+路径穿过的障碍密度。每个属性各自分成 easy / medium / hard，episode 的标签
+取三者的均值。
+
+<p align="center">
+  <img src="assets/difficulty_distribution.png" alt="HumanCLAW-Bench 难度分布" width="100%">
+</p>
+
+路径是在重新构建的 Recast navmesh 上计算的，构建时计入了全部静态物体，
+因此家具的阻挡与 rollout 时一致。在这一构建下 1,218 个 episode 全部可达。
+
 ## 仓库内容
 
 ```text

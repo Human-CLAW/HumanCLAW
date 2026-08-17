@@ -76,6 +76,23 @@ metric accumulation are disabled.
 See [the evaluation flow](docs/ARCHITECTURE.md), [metric definitions](docs/METRICS.md),
 [video tools](docs/VIDEOS.md), and [model-interface contract](docs/MODELS.md).
 
+## Benchmark difficulty
+
+Every episode carries a difficulty label built from three properties of the
+shortest collision-free route between the spawn point and the goal object:
+the geodesic distance it covers, the number of choice points along it
+(turns plus rooms entered), and the density of obstacles it passes. Each
+property is binned into easy / medium / hard, and the episode label is the
+mean of the three.
+
+<p align="center">
+  <img src="assets/difficulty_distribution.png" alt="HumanCLAW-Bench difficulty distribution" width="100%">
+</p>
+
+Routes are computed on a Recast navmesh rebuilt with every static object
+present, so furniture blocks the way it does at rollout time. All 1,218
+episodes are reachable under this construction.
+
 ## Repository contents
 
 ```text
