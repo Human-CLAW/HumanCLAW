@@ -7,7 +7,7 @@ HumanClawBench 在 41 个 HSSD scene、1,218 个 find–navigate–interact epis
 
 Release assets：
 
-- Code：<https://github.com/HumanCLAW/HumanClawBench>
+- Code：<https://github.com/Human-CLAW/HumanCLAW>
 - Motion weights（`paper_fullval_v1`）：
   <https://huggingface.co/HumanCLAW/HumanCLAW>
 - HSSD supplement（gated dataset）：
@@ -116,8 +116,8 @@ git clone https://github.com/facebookresearch/habitat-sim.git
 cd habitat-sim
 git checkout acbe6f4922e68145e401e55c30f9dfea460a3f24
 git submodule update --init --recursive
-git apply --check /absolute/path/to/HumanClawBench/patches/habitat-sim/humanclaw_halfphysics.patch
-git apply /absolute/path/to/HumanClawBench/patches/habitat-sim/humanclaw_halfphysics.patch
+git apply --check /absolute/path/to/HumanCLAW/patches/habitat-sim/humanclaw_halfphysics.patch
+git apply /absolute/path/to/HumanCLAW/patches/habitat-sim/humanclaw_halfphysics.patch
 python -m pip install -r requirements.txt
 python setup.py build_ext --inplace --headless --with-cuda --bullet
 python -m pip install -e .

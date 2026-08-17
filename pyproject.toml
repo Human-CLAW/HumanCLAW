@@ -18,7 +18,7 @@ training = ["torch>=2.1", "smplx>=0.1.28"]
 test = ["pytest>=7.4", "scipy>=1.10"]
 
 [project.urls]
-Repository = "https://github.com/HumanCLAW/HumanClawBench"
+Repository = "https://github.com/Human-CLAW/HumanCLAW"
 "Motion Weights" = "https://huggingface.co/HumanCLAW/HumanCLAW"
 "HSSD Supplement" = "https://huggingface.co/datasets/HumanCLAW/HumanCLAW-HSSD"
 
