@@ -490,3 +490,9 @@ PYTHONPATH=src python tests/runtime_forward_replay.py \
 Asset、execution、metric 和 provider 约定分别见
 `docs/ASSETS_zh.md`、`docs/ARCHITECTURE_zh.md`、`docs/METRICS_zh.md` 和
 `docs/MODELS_zh.md`。
+
+## License
+
+本 release（代码、配置与随包 resources）以非商业许可
+[CC BY-NC 4.0](LICENSE) 发布。Hugging Face 上分发的 motion weights 与 HSSD
+supplement 采用相同许可。官方 HSSD 数据仍受其自身许可与访问条款约束。

@@ -512,3 +512,10 @@ with `trajectory_after.npz`. Use `--max-steps 0` for the complete trajectory.
 
 See `docs/ASSETS.md`, `docs/ARCHITECTURE.md`, `docs/METRICS.md`, and
 `docs/MODELS.md` for the asset, execution, metric, and provider contracts.
+
+## License
+
+This release — code, configuration, and bundled resources — is licensed for
+non-commercial use under [CC BY-NC 4.0](LICENSE). The motion weights and the
+HSSD supplement distributed on Hugging Face carry the same license. Official
+HSSD data remains subject to its own license and access terms.

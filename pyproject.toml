@@ -7,6 +7,7 @@ name = "humanclaw-bench"
 version = "0.1.0"
 description = "HumanClawBench rollout release"
 readme = "README.md"
+license = {text = "CC-BY-NC-4.0"}
 requires-python = ">=3.10"
 dependencies = ["huggingface_hub>=0.24", "numpy>=1.24", "Pillow>=9.5"]
 
