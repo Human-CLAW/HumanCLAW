@@ -4,7 +4,12 @@
 
 # HumanCLAW: Can Vision-Language Models Act<br>Through a Body?
 
-[**🌐 Project Page**](https://human-claw.github.io) &nbsp;|&nbsp; [**📄 Paper (arXiv:2607.27180)**](https://arxiv.org/abs/2607.27180) &nbsp;|&nbsp; [**🏆 Leaderboard**](https://human-claw.github.io/#leaderboard)
+[![arXiv](https://img.shields.io/badge/arXiv-2607.27180-b31b1b.svg)](https://arxiv.org/abs/2607.27180)
+[![Project Page](https://img.shields.io/badge/🌐_Project-Page-1f6feb)](https://human-claw.github.io)
+[![Leaderboard](https://img.shields.io/badge/🏆_Leaderboard-live-2ea44f)](https://human-claw.github.io/#leaderboard)
+[![Weights](https://img.shields.io/badge/🤗_Weights-HumanCLAW-ffd21e)](https://huggingface.co/HumanCLAW/HumanCLAW)
+[![Dataset](https://img.shields.io/badge/🤗_Dataset-HumanCLAW--HSSD-ffd21e)](https://huggingface.co/datasets/HumanCLAW/HumanCLAW-HSSD)
+[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE)
 
 </div>
 
