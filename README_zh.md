@@ -50,6 +50,20 @@ semantic rendering、contact query 或任何 metric accumulation。
 [指标定义](docs/METRICS_zh.md)、[视频工具](docs/VIDEOS_zh.md)和
 [模型接口约定](docs/MODELS_zh.md)。
 
+## 基准难度
+
+每个 episode 都带一个难度标签，由出生点到目标物体之间最短无碰撞路径的三个
+属性构成：路径的测地距离、沿途的选择点数量（转弯数加经过的房间数）、以及
+路径穿过的障碍密度。每个属性各自分成 easy / medium / hard，episode 的标签
+取三者的均值。
+
+<p align="center">
+  <img src="assets/difficulty_distribution.png" alt="HumanCLAW-Bench 难度分布" width="100%">
+</p>
+
+路径是在重新构建的 Recast navmesh 上计算的，构建时计入了全部静态物体，
+因此家具的阻挡与 rollout 时一致。在这一构建下 1,218 个 episode 全部可达。
+
 ## 仓库内容
 
 ```text
@@ -94,8 +108,15 @@ checkpoint，以及一个 VLM endpoint 或 queue worker。
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -e '.[rollout,test]'
+python -m pip install torch==2.6.0 \
+  --index-url https://download.pytorch.org/whl/cu124
+python -m pip install -c constraints/eval-cu124.txt -e '.[rollout,test]'
 ```
+
+该 constraint 文件记录了本 release 在 A100/CUDA 12.4 上验证过的环境，避免
+未来未约束的 PyTorch wheel 静默选择更新的 CUDA runtime。若使用其他
+driver/toolkit 组合，请先安装匹配的 PyTorch wheel，并在构建 Habitat-Sim 前
+验证 `torch.cuda.is_available()`。
 
 Video 优先使用系统 `ffmpeg`。如需安装打包的 fallback：
 
@@ -119,13 +140,13 @@ git submodule update --init --recursive
 git apply --check /absolute/path/to/HumanCLAW/patches/habitat-sim/humanclaw_halfphysics.patch
 git apply /absolute/path/to/HumanCLAW/patches/habitat-sim/humanclaw_halfphysics.patch
 python -m pip install -r requirements.txt
-python setup.py build_ext --inplace --headless --with-cuda --bullet
-python -m pip install -e .
+python setup.py build_ext --inplace --headless --with-cuda --bullet --cache-args
+HEADLESS=True WITH_CUDA=True WITH_BULLET=True python -m pip install -e .
 python -m pip install -e build/deps/magnum-bindings/src/python
 ```
 
-经过干净机器完整验证的构建流程，以及精简 CUDA toolkit、损坏的 `ccache` 和
-`libgomp.so.1` 问题的处理方式，见
+Host 前置依赖，以及 OpenGL/EGL development file、新版 CMake policy、精简
+CUDA toolkit、损坏的 `ccache` 和 `libgomp.so.1` 问题的处理方式，见
 [`patches/habitat-sim/README_zh.md`](patches/habitat-sim/README_zh.md)。
 
 ## 准备 HSSD
@@ -142,8 +163,13 @@ python -m pip install -e build/deps/magnum-bindings/src/python
 
 将它适配为 HumanClawBench 数据：
 
+请先在
+[`HumanCLAW/HumanCLAW-HSSD`](https://huggingface.co/datasets/HumanCLAW/HumanCLAW-HSSD)
+页面申请并获得访问权限。只有 `hf auth login` 不会自动获得 gated access；已登录
+但未获授权的账号会收到 HTTP 403。
+
 ```bash
-hf auth login  # gated supplement 只需登录一次
+hf auth login
 humanclaw-bench prepare-hssd --hssd-root /path/to/hssd-hab
 ```
 
@@ -248,6 +274,13 @@ model-specific `max_tokens`：
 需要的 placeholder。远程 endpoint 请导出对应环境变量，不要把 credential
 写入 JSON。
 
+Azure OpenAI 请使用 `configs/models/azure_openai_o_series.json`。它从
+`AZURE_OPENAI_DEPLOYMENT`、`AZURE_OPENAI_ENDPOINT`、
+`AZURE_OPENAI_API_VERSION` 和 `AZURE_OPENAI_API_KEY` 读取 deployment、
+endpoint、API version 和 key。示例针对 o-series 使用
+`max_completion_tokens`，不发送不受支持的 temperature 参数，并选择 low
+reasoning effort；credential 不会写进 model JSON。
+
 对于持有 credential 的外部 worker，使用
 `configs/models/filesystem_queue.json`。Adapter 将 request 原子地放入
 `<queue_dir>/pending/<call_id>/`；worker 返回
@@ -277,6 +310,22 @@ humanclaw-bench run \
 Planner 使用 prompt v4，verifier 使用 verifier v3。最终执行的 motion action
 始终是 verifier-final action。Stop 会结束 episode；否则 rollout 最多运行
 100 个 environment step。
+
+如需做有限步数的 provider-to-simulator smoke test，单 episode 的 `rollout`
+命令支持 `--max-steps`。它只覆盖本次运行，不会修改 release profile：
+
+```bash
+humanclaw-bench rollout \
+  --profile paper_fullval_v1 \
+  --model-config configs/models/azure_openai_o_series.json \
+  --scene-id 102343992 \
+  --episode-id 0 \
+  --object-category bed \
+  --device cuda \
+  --max-steps 1 \
+  --video \
+  --output-root outputs/azure_smoke
+```
 
 Planner 和 verifier 遇到 provider call 或 JSON parsing 失败时，都会在当前
 simulator state 原地重试，最多 5 次。Planner 连续 5 次失败后执行一次
@@ -485,7 +534,9 @@ PYTHONPATH=src python tests/runtime_forward_replay.py \
 
 该检查恢复 saved human 和每个 dynamic object 的 pose/velocity，从
 `trajectory_before.npz` 推进 Half-Physics，并逐帧对照
-`trajectory_after.npz`。`--max-steps 0` 会检查完整 trajectory。
+`trajectory_after.npz`。如果 replay manifest 记录了 metrics execution path，
+它还会复现原始 pre-motion metric contact query。`--max-steps 0` 会检查完整
+trajectory。
 
 Asset、execution、metric 和 provider 约定分别见
 `docs/ASSETS_zh.md`、`docs/ARCHITECTURE_zh.md`、`docs/METRICS_zh.md` 和

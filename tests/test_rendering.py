@@ -11,6 +11,7 @@ from humanclaw_bench.rendering.batch import (
 from humanclaw_bench.rendering.saved_trajectory import (
     RenderContract,
     environment_kwargs,
+    load_render_contract,
     load_saved_after_trajectory,
 )
 
@@ -90,6 +91,29 @@ def test_environment_kwargs_use_portable_scene_fallback(tmp_path):
     assert kwargs["scene_id"] == str(scene)
     assert kwargs["video_enabled"] is True
     assert kwargs["compute_metrics"] is False
+
+
+def test_render_contract_loads_execution_flags_and_defaults_old_manifests(tmp_path):
+    """New execution metadata is optional for initial public replay bundles."""
+
+    rollout = tmp_path / "rollout"
+    rollout.mkdir()
+    manifest = {
+        "schema": "humanclaw_replay_v1",
+        "profile": {},
+        "episode": {},
+        "physics": {},
+        "rendering": {},
+        "assets": {},
+        "execution": {"compute_metrics": True},
+    }
+    path = rollout / "replay_manifest.json"
+    path.write_text(json.dumps(manifest))
+    assert load_render_contract(rollout).execution == {"compute_metrics": True}
+    manifest.pop("execution")
+    path.write_text(json.dumps(manifest))
+    assert load_render_contract(rollout).execution == {}
+
 
 def test_batch_discovery_preserves_rollout_tree(tmp_path):
     source = tmp_path / "source"

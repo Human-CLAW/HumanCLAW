@@ -115,6 +115,17 @@ def build_replay_metadata(
                 getattr(third_person_camera, "resolution", (512, 512))
             ),
         },
+        # Record optional runtime paths that can affect Bullet's initial
+        # broad-phase/contact cache.  Forward replay uses these flags instead
+        # of inferring the original mode from whichever artifacts happen to
+        # remain beside the trajectory.
+        "execution": {
+            "video_enabled": bool(getattr(env, "video_enabled", False)),
+            "compute_metrics": bool(getattr(env, "compute_metrics", False)),
+            "pre_motion_metric_reset": bool(
+                getattr(env, "compute_metrics", False)
+            ),
+        },
         "assets": assets,
         "coordinate_frames": {
             "trajectory_before": "motion-generator Y-up SMPL-X",

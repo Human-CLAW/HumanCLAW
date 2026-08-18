@@ -255,6 +255,13 @@ class HCFindNavInteractEvaluator:
         motion_config = self.profile.section("motion")
         physics = self.profile.section("physics")
         rendering = dict(self.profile.data.get("rendering") or {})
+        max_steps = int(
+            self.config.get("max_steps")
+            if self.config.get("max_steps") is not None
+            else benchmark["max_steps"]
+        )
+        if max_steps <= 0:
+            raise ValueError("max_steps must be positive")
 
         scene_override = self.config.get("scene_dataset_config")
         scene_config = (
@@ -270,7 +277,7 @@ class HCFindNavInteractEvaluator:
             episode_id=self.config.get("episode_id"),
             episode_index=int(self.config.get("episode_index", 0)),
             object_category=self.config.get("object_category"),
-            max_steps=int(benchmark["max_steps"]),
+            max_steps=max_steps,
         )
         episode = apply_instruction_version(
             episode,
@@ -308,7 +315,7 @@ class HCFindNavInteractEvaluator:
             agent_urdf=resolve_release_path(physics["agent_urdf"]),
             agent_shift_npy=resolve_release_path(physics["agent_shift_npy"]),
             physics_config=resolve_release_path(physics["physics_config"]),
-            max_episode_steps=int(benchmark["max_steps"]),
+            max_episode_steps=max_steps,
             lighting=str(rendering.get("lighting", "ambient")),
             ambient_strength=float(rendering.get("ambient_strength", 1.2)),
             ego_resolution=tuple(rendering.get("ego_resolution", [448, 448])),

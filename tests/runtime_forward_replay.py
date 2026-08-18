@@ -26,6 +26,9 @@ from humanclaw_bench.benchmark.episodes import (
     load_episode,
 )
 from humanclaw_bench.envs.find_nav_interact_env import HCFindNavInteractEnv
+from humanclaw_bench.envs.half_physics_env import (
+    xb75_yup_to_half_physics_pose,
+)
 from humanclaw_bench.evaluation.replay import apply_agent_pose, apply_object_pose
 from humanclaw_bench.paths import resolve_release_path
 from humanclaw_bench.rendering.saved_trajectory import (
@@ -74,6 +77,40 @@ def _same_quaternion(actual: Any, expected: Any, *, atol: float = 1.0e-7) -> boo
     )
 
 
+def _finite_vector(value: Any, width: int) -> np.ndarray | None:
+    """Return one finite saved vector, or ``None`` for unavailable old state."""
+
+    array = np.asarray(value, dtype=np.float64).reshape(-1)
+    if array.shape != (width,) or not np.isfinite(array).all():
+        return None
+    return array
+
+
+def _reset_human_pose(
+    before: dict[str, np.ndarray],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Recover the exact pre-Habitat reset pose when the archive provides it.
+
+    The post-reset human fields have passed through Habitat quaternion and
+    axis-angle conversions.  Feeding those rounded values back into reset can
+    change a long forward replay.  Version-two archives also retain the exact
+    75-D world pose originally supplied by the motion runner, so prefer that
+    source and keep the post-reset fields only as an old-archive fallback.
+    """
+
+    initial_xb = np.asarray(
+        before.get("initial_xb_world_75", np.zeros((0, 75), dtype=np.float32)),
+        dtype=np.float32,
+    ).reshape(-1)
+    if initial_xb.shape == (75,) and np.isfinite(initial_xb).all():
+        return xb75_yup_to_half_physics_pose(initial_xb)
+    return (
+        np.asarray(before["initial_human_transl"], dtype=np.float32),
+        np.asarray(before["initial_human_global_orient"], dtype=np.float32),
+        np.asarray(before["initial_human_body_pose"], dtype=np.float32),
+    )
+
+
 def _restore_initial_state(env: Any, before: dict[str, np.ndarray]) -> None:
     """Restore only saved state that differs from the freshly loaded scene.
 
@@ -91,34 +128,38 @@ def _restore_initial_state(env: Any, before: dict[str, np.ndarray]) -> None:
         ("global_orient", "initial_human_global_orient"),
         ("body_pose", "initial_human_body_pose"),
     )
-    if not all(
+    human_pose_changed = not all(
         _same_value(current_human[field], before[key]) for field, key in pose_fields
-    ):
+    )
+    if human_pose_changed:
         apply_agent_pose(
             env,
             np.asarray(before["initial_human_transl"], dtype=np.float32),
             np.asarray(before["initial_human_global_orient"], dtype=np.float32),
             np.asarray(before["initial_human_body_pose"], dtype=np.float32),
         )
-    if not _same_value(
-        current_human["root_linear_velocity"],
-        before["initial_human_root_linear_velocity"],
+    root_linear = _finite_vector(before["initial_human_root_linear_velocity"], 3)
+    if root_linear is not None and (
+        human_pose_changed
+        or not _same_value(current_human["root_linear_velocity"], root_linear)
     ):
-        env.agent.root_linear_velocity = _set_vector(
-            runtime, before["initial_human_root_linear_velocity"]
-        )
-    if not _same_value(
-        current_human["root_angular_velocity"],
-        before["initial_human_root_angular_velocity"],
+        env.agent.root_linear_velocity = _set_vector(runtime, root_linear)
+    root_angular = _finite_vector(before["initial_human_root_angular_velocity"], 3)
+    if root_angular is not None and (
+        human_pose_changed
+        or not _same_value(current_human["root_angular_velocity"], root_angular)
     ):
-        env.agent.root_angular_velocity = _set_vector(
-            runtime, before["initial_human_root_angular_velocity"]
-        )
+        env.agent.root_angular_velocity = _set_vector(runtime, root_angular)
     joint_velocity = np.asarray(
         before["initial_human_joint_velocities"], dtype=np.float64
     ).reshape(-1)
-    if joint_velocity.size and not _same_value(
-        current_human["joint_velocities"], joint_velocity
+    if (
+        joint_velocity.size
+        and np.isfinite(joint_velocity).all()
+        and (
+            human_pose_changed
+            or not _same_value(current_human["joint_velocities"], joint_velocity)
+        )
     ):
         env.agent.joint_velocities = joint_velocity.tolist()
 
@@ -142,16 +183,44 @@ def _restore_initial_state(env: Any, before: dict[str, np.ndarray]) -> None:
             raise RuntimeError(
                 f"Dynamic-object ID mismatch for {name}: {actual_id} != {expected_ids[index]}"
             )
-        if not (
+        object_pose_changed = not (
             _same_value(current_object["position"], positions[index])
             and _same_quaternion(current_object["rotation"], rotations[index])
-        ):
+        )
+        if object_pose_changed:
             if not apply_object_pose(env, obj, positions[index], rotations[index]):
                 raise RuntimeError(f"Initial object pose is non-finite: {name}")
-        if not _same_value(current_object["linear_velocity"], linear[index]):
-            obj.linear_velocity = _set_vector(runtime, linear[index])
-        if not _same_value(current_object["angular_velocity"], angular[index]):
-            obj.angular_velocity = _set_vector(runtime, angular[index])
+        saved_linear = _finite_vector(linear[index], 3)
+        if saved_linear is not None and (
+            object_pose_changed
+            or not _same_value(current_object["linear_velocity"], saved_linear)
+        ):
+            obj.linear_velocity = _set_vector(runtime, saved_linear)
+        saved_angular = _finite_vector(angular[index], 3)
+        if saved_angular is not None and (
+            object_pose_changed
+            or not _same_value(current_object["angular_velocity"], saved_angular)
+        ):
+            obj.angular_velocity = _set_vector(runtime, saved_angular)
+
+
+def _replay_metric_reset(env: Any, contract: Any, episode: Any) -> None:
+    """Repeat the original pre-motion metric query that primes Bullet contacts."""
+
+    from humanclaw_bench.evaluation.metrics.episode import PaperMetricRecorder
+
+    recorder = PaperMetricRecorder(
+        episode=episode,
+        env=env,
+        config=dict(contract.profile.get("metrics") or {}),
+        profile_name=str(
+            contract.profile.get("profile")
+            or contract.profile.get("name")
+            or "paper_fullval_v1"
+        ),
+        rollout_index=int(contract.episode.get("rollout_index", 0)),
+    )
+    recorder.record_reset()
 
 
 def _finite_max_abs(actual: np.ndarray, expected: np.ndarray, label: str) -> float:
@@ -200,11 +269,18 @@ def replay_and_compare(
     before = _archive(rollout_dir / "trajectory_before.npz")
     after = _archive(rollout_dir / "trajectory_after.npz")
     kwargs = environment_kwargs(contract)
-    # Match the original optional sensors/contact queries.  They should be
-    # read-only with respect to Bullet, but matching the run makes this test a
-    # stronger end-to-end determinism check than a physics-only approximation.
-    kwargs["video_enabled"] = (rollout_dir / "ego.mp4").is_file()
-    kwargs["compute_metrics"] = (rollout_dir / "metrics.json").is_file()
+    # Prefer explicit execution flags from new manifests.  Artifact-presence
+    # fallback keeps trajectories created by the initial public release usable.
+    execution = dict(contract.execution or {})
+    kwargs["video_enabled"] = bool(
+        execution.get("video_enabled", (rollout_dir / "ego.mp4").is_file())
+    )
+    kwargs["compute_metrics"] = bool(
+        execution.get("compute_metrics", (rollout_dir / "metrics.json").is_file())
+    )
+    metric_reset_required = bool(
+        execution.get("pre_motion_metric_reset", kwargs["compute_metrics"])
+    )
     benchmark = dict(contract.profile.get("benchmark") or {})
     episode = load_episode(
         benchmark_dataset_dir=resolve_release_path(benchmark["dataset_dir"]),
@@ -237,13 +313,16 @@ def replay_and_compare(
     }
     max_error_locations: dict[str, str] = {}
     try:
+        initial_transl, initial_orient, initial_body_pose = _reset_human_pose(before)
         env.reset(
             episode,
-            initial_transl=before["initial_human_transl"],
-            initial_global_orient=before["initial_human_global_orient"],
-            initial_body_pose=before["initial_human_body_pose"],
+            initial_transl=initial_transl,
+            initial_global_orient=initial_orient,
+            initial_body_pose=initial_body_pose,
         )
         _restore_initial_state(env, before)
+        if metric_reset_required:
+            _replay_metric_reset(env, contract, episode)
         reference_names = _names(after["object_names"])
 
         for step_index in range(selected_steps):

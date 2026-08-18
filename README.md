@@ -25,7 +25,7 @@ On top of the framework, **HumanCLAW-Bench** provides **1,218 long-horizon, egoc
 ## 💥 News
 
 - **[2026.08.17]** 🔥 **Full release!** The complete evaluation harness and benchmark code are now open-sourced in this repository.
-- **[2026.08.17]** 🤗 [Motion weights](https://huggingface.co/HumanCLAW/HumanCLAW) and the [HSSD supplement](https://huggingface.co/datasets/HumanCLAW/HumanCLAW-HSSD) are now accessible on Hugging Face.
+- **[2026.08.17]** 🤗 [Motion weights](https://huggingface.co/HumanCLAW/HumanCLAW) and the gated [HSSD supplement](https://huggingface.co/datasets/HumanCLAW/HumanCLAW-HSSD) are now released on Hugging Face.
 - **[2026.07.29]** 📄 Our paper is now accessible at [arXiv:2607.27180](https://arxiv.org/abs/2607.27180).
 
 HumanClawBench evaluates a vision-language model as a full-body agent in 1,218
@@ -76,6 +76,23 @@ metric accumulation are disabled.
 See [the evaluation flow](docs/ARCHITECTURE.md), [metric definitions](docs/METRICS.md),
 [video tools](docs/VIDEOS.md), and [model-interface contract](docs/MODELS.md).
 
+## Benchmark difficulty
+
+Every episode carries a difficulty label built from three properties of the
+shortest collision-free route between the spawn point and the goal object:
+the geodesic distance it covers, the number of choice points along it
+(turns plus rooms entered), and the density of obstacles it passes. Each
+property is binned into easy / medium / hard, and the episode label is the
+mean of the three.
+
+<p align="center">
+  <img src="assets/difficulty_distribution.png" alt="HumanCLAW-Bench difficulty distribution" width="100%">
+</p>
+
+Routes are computed on a Recast navmesh rebuilt with every static object
+present, so furniture blocks the way it does at rollout time. All 1,218
+episodes are reachable under this construction.
+
 ## Repository contents
 
 ```text
@@ -122,8 +139,16 @@ checkpoints, and a VLM endpoint or queue worker.
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -e '.[rollout,test]'
+python -m pip install torch==2.6.0 \
+  --index-url https://download.pytorch.org/whl/cu124
+python -m pip install -c constraints/eval-cu124.txt -e '.[rollout,test]'
 ```
+
+The constraint file records the A100/CUDA 12.4 environment validated for this
+release and prevents a future unconstrained PyTorch wheel from silently
+selecting a newer CUDA runtime. For another driver/toolkit combination, install
+its matching PyTorch wheel first and validate `torch.cuda.is_available()`
+before building Habitat-Sim.
 
 Video uses a system `ffmpeg` when available. To install a packaged fallback:
 
@@ -147,13 +172,14 @@ git submodule update --init --recursive
 git apply --check /absolute/path/to/HumanCLAW/patches/habitat-sim/humanclaw_halfphysics.patch
 git apply /absolute/path/to/HumanCLAW/patches/habitat-sim/humanclaw_halfphysics.patch
 python -m pip install -r requirements.txt
-python setup.py build_ext --inplace --headless --with-cuda --bullet
-python -m pip install -e .
+python setup.py build_ext --inplace --headless --with-cuda --bullet --cache-args
+HEADLESS=True WITH_CUDA=True WITH_BULLET=True python -m pip install -e .
 python -m pip install -e build/deps/magnum-bindings/src/python
 ```
 
-The fully validated clean-machine recipe and fixes for minimal CUDA toolkits,
-broken `ccache`, and `libgomp.so.1` are documented in
+The host prerequisites and fixes for OpenGL/EGL development files, recent
+CMake policies, minimal CUDA toolkits, broken `ccache`, and `libgomp.so.1` are
+documented in
 [`patches/habitat-sim/README.md`](patches/habitat-sim/README.md).
 
 ## Prepare HSSD
@@ -170,8 +196,13 @@ The original HSSD val download should contain:
 
 Prepare it for HumanClawBench:
 
+Request and receive access on the
+[`HumanCLAW/HumanCLAW-HSSD`](https://huggingface.co/datasets/HumanCLAW/HumanCLAW-HSSD)
+page before authenticating. `hf auth login` alone does not grant gated access;
+an authenticated account without approval receives HTTP 403.
+
 ```bash
-hf auth login  # required once for the gated supplement
+hf auth login
 humanclaw-bench prepare-hssd --hssd-root /path/to/hssd-hab
 ```
 
@@ -283,6 +314,13 @@ placeholder expected by OpenAI-compatible servers. For a remote endpoint,
 export the named environment variable instead of writing a credential into
 the JSON file.
 
+For Azure OpenAI, use `configs/models/azure_openai_o_series.json`. It reads the
+deployment, endpoint, API version, and key from `AZURE_OPENAI_DEPLOYMENT`,
+`AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_VERSION`, and
+`AZURE_OPENAI_API_KEY`. The example uses `max_completion_tokens`, omits the
+unsupported temperature request, and selects low reasoning effort for
+o-series deployments. Credentials are never stored in the model JSON.
+
 For a credential-owning external worker, use
 `configs/models/filesystem_queue.json`. The adapter atomically places a request
 under `<queue_dir>/pending/<call_id>/`; the worker returns
@@ -312,6 +350,23 @@ humanclaw-bench run \
 The planner uses prompt v4 and the verifier uses verifier v3. The selected
 motion action is always the verifier-final action. Stop ends the episode;
 otherwise the rollout ends at 100 environment steps.
+
+For a bounded provider-to-simulator smoke test, the single-episode `rollout`
+command accepts `--max-steps`. This changes only that invocation and does not
+alter the release profile:
+
+```bash
+humanclaw-bench rollout \
+  --profile paper_fullval_v1 \
+  --model-config configs/models/azure_openai_o_series.json \
+  --scene-id 102343992 \
+  --episode-id 0 \
+  --object-category bed \
+  --device cuda \
+  --max-steps 1 \
+  --video \
+  --output-root outputs/azure_smoke
+```
 
 Each planner or verifier stage retries provider and JSON-parsing failures at
 the current simulator state, up to five attempts. After five failed planner
@@ -534,7 +589,9 @@ PYTHONPATH=src python tests/runtime_forward_replay.py \
 
 The check restores the saved human and every dynamic-object pose/velocity,
 advances Half-Physics from `trajectory_before.npz`, and compares every frame
-with `trajectory_after.npz`. Use `--max-steps 0` for the complete trajectory.
+with `trajectory_after.npz`. It also reproduces the original pre-motion metric
+contact query when that execution path is recorded in the replay manifest.
+Use `--max-steps 0` for the complete trajectory.
 
 See `docs/ASSETS.md`, `docs/ARCHITECTURE.md`, `docs/METRICS.md`, and
 `docs/MODELS.md` for the asset, execution, metric, and provider contracts.

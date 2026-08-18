@@ -1,0 +1,15 @@
+{
+  "backend": "azure_openai",
+  "model": "replace-with-azure-deployment-name",
+  "model_env": "AZURE_OPENAI_DEPLOYMENT",
+  "api_key_env": "AZURE_OPENAI_API_KEY",
+  "azure_endpoint_env": "AZURE_OPENAI_ENDPOINT",
+  "api_version_env": "AZURE_OPENAI_API_VERSION",
+  "max_tokens": 4096,
+  "max_tokens_parameter": "max_completion_tokens",
+  "temperature": 0.0,
+  "send_temperature": false,
+  "reasoning_effort": "low",
+  "response_format": {"type": "json_object"},
+  "extra_body": {}
+}

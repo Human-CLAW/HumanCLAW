@@ -2,7 +2,22 @@ import json
 
 from humanclaw_bench import batch
 from humanclaw_bench import hssd
-from humanclaw_bench.main import main
+from humanclaw_bench.main import _build_parser, main
+
+
+def test_rollout_cli_accepts_bounded_max_steps():
+    args = _build_parser().parse_args(
+        [
+            "rollout",
+            "--model-config",
+            "model.json",
+            "--scene-id",
+            "102343992",
+            "--max-steps",
+            "1",
+        ]
+    )
+    assert args.max_steps == 1
 
 
 def test_config_cli_smoke(capsys):
