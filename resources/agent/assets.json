@@ -1,0 +1,18 @@
+{
+  "schema": "humanclaw_agent_asset_registry_v1",
+  "default": "paper",
+  "assets": {
+    "paper": {
+      "description": "Hand-merged neutral beta=0 humanoid used for all reported benchmark results.",
+      "paper_default": true,
+      "urdf": "resources/agent/neutral_beta0_handmerged/neutral_beta0_handmerged.urdf",
+      "shift": "resources/agent/neutral_beta0_handmerged/shift.npy"
+    },
+    "finger-separated": {
+      "description": "Optional neutral beta=0 humanoid with independent finger visual and collision meshes.",
+      "paper_default": false,
+      "urdf": "resources/agent/neutral_beta0_finger_separated/neutral_beta0.urdf",
+      "shift": "resources/agent/neutral_beta0_finger_separated/shift.npy"
+    }
+  }
+}

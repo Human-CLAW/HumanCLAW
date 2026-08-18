@@ -334,6 +334,8 @@ def run_batch(config: dict[str, Any]) -> dict[str, Any]:
                 command.append("--save-video")
             if bool(config.get("compute_metrics", False)):
                 command.append("--compute-metrics")
+            if config.get("agent_asset"):
+                command += ["--agent-asset", str(config["agent_asset"])]
             env = _child_process_env()
             env.update(child_weight_env)
             device = _least_loaded_device(

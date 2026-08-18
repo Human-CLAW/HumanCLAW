@@ -27,7 +27,8 @@ motion/training/
 
 resources/motion/training/
 ├── paper_training_v1.json      one shared training configuration
-└── manifests/*.csv             exact source chunks used by each skill
+├── manifests/*.csv             exact source chunks used by each skill
+└── segments/*.csv              reviewed source and final-used time ranges
 ```
 
 All eight ControlNets use the same trainer and shared optimization settings.
@@ -96,6 +97,43 @@ skills consume them directly; they do not need the review videos or copied
 subset trees. `curation/filter_manifest.py` supports new experiments with
 explicit yaw, translation, direction, and lateral-motion thresholds. It writes
 a new list and never mutates or copies the base chunk data.
+
+## Reviewed segment times
+
+`resources/motion/training/segments/` makes the data selection readable without
+shipping motion arrays. Each row names the source AMASS sequence and BABEL ID,
+then records two distinct ranges in both seconds and milliseconds:
+
+- `segment_start/end`: the BABEL or human-reviewed source interval;
+- `first/last_used_chunk`: the actual coverage of final selected chunks owned
+  by that interval.
+
+The per-skill tables contain only intervals that contribute at least one final
+training chunk. Their `used_chunk_count` columns sum exactly to the row counts
+in `manifests/*.csv`:
+
+| Skill | Final used segments | Final chunks |
+|---|---:|---:|
+| Walk Forward | 493 | 16,023 |
+| Side Walk | 67 | 2,012 |
+| Step Back | 129 | 2,294 |
+| Turn | 436 | 6,773 |
+| Step Climb Up | 96 | 2,086 |
+| Step Climb Down | 125 | 2,094 |
+| Stop | 111 | 4,011 |
+| Sit | 116 | 5,912 |
+
+These two ranges are intentionally not forced to be identical. Selection can
+apply yaw, displacement, or future/action-window filters after a segment is
+accepted; Side Walk in particular uses future-window containment, so a full
+20-frame chunk may begin slightly before its reviewed interval.
+
+Seven skills retain their accepted BABEL segment manifests. Step Climb Up is
+the exception: its surviving final human-reviewed 2,086-row chunk manifest
+encodes the owner interval in each reviewed clip filename, while an older
+intermediate segment CSV is no longer available. Every row states this
+provenance explicitly. `segments/index.json` pins source and normalized file
+hashes.
 
 ## Train the base MotionDiT
 

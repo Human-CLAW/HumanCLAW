@@ -73,6 +73,20 @@ Add `--video` for synchronized ego/exo MP4 files; video and metrics are
 independent. Without `--metrics`, semantic rendering, contact queries, and all
 metric accumulation are disabled.
 
+To run the same one-episode smoke test with the optional finger-separated
+humanoid, first validate the prepared inputs:
+
+```bash
+python examples/run_finger_separated_episode.py \
+  --model-config my_model.json \
+  --dry-run
+```
+
+Remove `--dry-run` to start the rollout. The example uses the standard prepared
+HSSD path, keeps `paper_fullval_v1` and its motion weights, and changes only the
+explicit agent asset to `finger-separated`. Pass `--scene-dataset-config` if
+HSSD was prepared at a different location.
+
 See [the evaluation flow](docs/ARCHITECTURE.md), [metric definitions](docs/METRICS.md),
 [video tools](docs/VIDEOS.md), and [model-interface contract](docs/MODELS.md).
 
@@ -121,13 +135,18 @@ src/humanclaw_bench/
 
 Official HSSD meshes, motion weights, licensed motion datasets, provider
 credentials, and model rollout results are not included. The repository does
-include the motion-training implementation and exact per-skill source-chunk
-lists; see
+include the motion-training implementation, exact per-skill source-chunk
+lists, and readable reviewed segment times in seconds and milliseconds; see
 [`src/humanclaw_bench/motion/training/README.md`](src/humanclaw_bench/motion/training/README.md).
 The 1,693 instance-specific HSSD baked meshes are a separately versioned,
 gated Hugging Face asset; the repository contains their exact filename, size,
 and SHA-256 manifest. Inference, replay recording, and metric implementations
 are included.
+
+The reported benchmark uses the bundled hand-merged humanoid. An optional
+finger-separated URDF is included for user extensions and can be selected with
+`--agent-asset finger-separated`; omitting the flag leaves the paper profile
+unchanged. See [the asset guide](docs/ASSETS.md).
 
 ## Install
 

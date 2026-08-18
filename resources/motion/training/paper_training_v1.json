@@ -39,7 +39,9 @@
     "walk_forward": {
       "network": "WalkForwardCtrlDiTFourierXZYaw",
       "manifest": "resources/motion/training/manifests/walk_forward.csv",
+      "segments": "resources/motion/training/segments/walk_forward.csv",
       "expected_samples": 16023,
+      "expected_segments": 493,
       "condition": "final canonical pelvis x, pelvis z, and body yaw in degrees",
       "n_freqs": 6,
       "repeat_factor": 1
@@ -47,7 +49,9 @@
     "side_walk": {
       "network": "SideWalkCtrlDiTFourier",
       "manifest": "resources/motion/training/manifests/side_walk.csv",
+      "segments": "resources/motion/training/segments/side_walk.csv",
       "expected_samples": 2012,
+      "expected_segments": 67,
       "condition": "final canonical lateral pelvis displacement in meters",
       "n_freqs": 6,
       "repeat_factor": 2
@@ -55,7 +59,9 @@
     "step_back": {
       "network": "WalkForwardCtrlDiTFourier",
       "manifest": "resources/motion/training/manifests/step_back.csv",
+      "segments": "resources/motion/training/segments/step_back.csv",
       "expected_samples": 2294,
+      "expected_segments": 129,
       "condition": "final canonical pelvis x and pelvis z displacement in meters",
       "n_freqs": 6,
       "repeat_factor": 1
@@ -63,35 +69,45 @@
     "turn": {
       "network": "TurnCtrlDiT",
       "manifest": "resources/motion/training/manifests/turn.csv",
+      "segments": "resources/motion/training/segments/turn.csv",
       "expected_samples": 6773,
+      "expected_segments": 436,
       "condition": "final canonical signed body yaw in degrees, normalized by 75 for the MLP",
       "repeat_factor": 1
     },
     "step_climb_up": {
       "network": "StepClimbUpCtrlDiT",
       "manifest": "resources/motion/training/manifests/step_climb_up.csv",
+      "segments": "resources/motion/training/segments/step_climb_up.csv",
       "expected_samples": 2086,
+      "expected_segments": 96,
       "condition": "maximum toe height and horizontal separation over the chunk",
       "repeat_factor": 1
     },
     "step_climb_down": {
       "network": "StepClimbDownCtrlDiT",
       "manifest": "resources/motion/training/manifests/step_climb_down.csv",
+      "segments": "resources/motion/training/segments/step_climb_down.csv",
       "expected_samples": 2094,
+      "expected_segments": 125,
       "condition": "maximum toe height and horizontal separation over the chunk",
       "repeat_factor": 2
     },
     "stop": {
       "network": "NonCondCtrlDiT",
       "manifest": "resources/motion/training/manifests/stop.csv",
+      "segments": "resources/motion/training/segments/stop.csv",
       "expected_samples": 4011,
+      "expected_segments": 111,
       "condition": "one learned action token; no numeric action parameter",
       "repeat_factor": 1
     },
     "sit": {
       "network": "SitCtrlDiT",
       "manifest": "resources/motion/training/manifests/sit.csv",
+      "segments": "resources/motion/training/segments/sit.csv",
       "expected_samples": 5912,
+      "expected_segments": 116,
       "condition": "minimum canonical pelvis height over the accepted sit segment",
       "repeat_factor": 1
     }

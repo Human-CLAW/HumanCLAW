@@ -7,8 +7,12 @@
 The repository includes one Habitat split header plus 41 scene shards. The
 header defines the six category mappings; the 41 shards contain all 1,218
 Find/Nav/Interact episodes. It also includes the beta-zero hand-merged runtime
-body, natural seed state, stabilized environment metadata, and provenance
-records. It also includes the 66 pelvis-relative neutral-joint constants used
+body, an optional finger-separated beta-zero body, natural seed state,
+stabilized environment metadata, and provenance records. The hand-merged body
+remains the paper default. The optional body gives all 30 finger links separate
+visual and collision meshes and must be selected explicitly with
+`--agent-asset finger-separated`; its added contacts can change physics and
+collision metrics. It also includes the 66 pelvis-relative neutral-joint constants used
 by Motion Jerk in `resources/metrics/smpl_neutral_body22.json`; the full SMPL
 archive is neither needed nor redistributed. Versioned planner and verifier
 prompts are ordinary, inspectable Python modules under `agent/`. Precomputed
@@ -67,7 +71,10 @@ AMASS, BABEL, and the neutral SMPL model are not redistributed. The repository
 contains only eight transparent CSV training lists under
 `resources/motion/training/manifests/` (1.67 MB total). Each row identifies a
 relative AMASS chunk pickle and its source index; it does not contain motion
-arrays. Build the 20-frame corpus locally and use these lists as described in
+arrays. A second set under `resources/motion/training/segments/` reports the
+human-reviewed BABEL interval and the first/last final-used chunk time in both
+seconds and milliseconds. Its per-segment chunk counts sum exactly to the
+machine training lists. Build the 20-frame corpus locally and use these lists as described in
 the [motion-training guide](../src/humanclaw_bench/motion/training/README.md).
 
 ## External motion weights

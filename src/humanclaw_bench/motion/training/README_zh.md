@@ -26,7 +26,8 @@ motion/training/
 
 resources/motion/training/
 ├── paper_training_v1.json      八个 skill 共用的训练配置
-└── manifests/*.csv             每个 skill 的精确 source chunk
+├── manifests/*.csv             每个 skill 的精确 source chunk
+└── segments/*.csv              reviewed source 与最终使用的时间范围
 ```
 
 八个 ControlNet 使用同一个 trainer 和同一组 optimization setting，只替换
@@ -91,6 +92,38 @@ condition，避免重建时的数值偏差。八份 list 合计仅 1.67 MB；仓
 review video 或复制后的 subset tree。`curation/filter_manifest.py` 可为新实验
 显式设置 yaw、translation、direction 和 lateral-motion threshold；它只写新
 list，不修改或复制 base chunk data。
+
+## Reviewed segment 时间
+
+`resources/motion/training/segments/` 在不分发 motion array 的前提下，把数据选择
+变成可读表格。每行给出源 AMASS sequence 和 BABEL ID，并以秒和毫秒记录两组不同
+时间：
+
+- `segment_start/end`：BABEL 或人工 reviewed source interval；
+- `first/last_used_chunk`：属于该 interval 的最终训练 chunk 实际覆盖范围。
+
+每个 skill 表只保留至少贡献一个最终 training chunk 的 interval；其中
+`used_chunk_count` 之和与 `manifests/*.csv` 的精确行数完全相同：
+
+| Skill | 最终使用 segment | 最终 chunk |
+|---|---:|---:|
+| Walk Forward | 493 | 16,023 |
+| Side Walk | 67 | 2,012 |
+| Step Back | 129 | 2,294 |
+| Turn | 436 | 6,773 |
+| Step Climb Up | 96 | 2,086 |
+| Step Climb Down | 125 | 2,094 |
+| Stop | 111 | 4,011 |
+| Sit | 116 | 5,912 |
+
+这两组时间不会被强行写成相同值。Segment 人工接受后，还可能经过 yaw、位移或
+future/action-window filter；特别是 Side Walk 使用 future-window containment，
+因此完整 20-frame chunk 可能略早于 reviewed interval 开始。
+
+七个 skill 仍保留其 accepted BABEL segment manifest。Step Climb Up 是例外：
+现存最终人工 reviewed 的 2,086 行 chunk manifest 在 reviewed clip filename 中
+编码了所属 interval，但更早的中间 segment CSV 已不可用。每行都明确记录这项
+provenance；`segments/index.json` 固定了 source 与 normalized file hash。
 
 ## 训练 base MotionDiT
 

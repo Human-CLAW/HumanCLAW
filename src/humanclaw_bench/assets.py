@@ -112,6 +112,36 @@ def verify_bundled_assets() -> list[dict[str, Any]]:
     )
 
 
+def agent_asset_registry() -> dict[str, Any]:
+    """Load the two bundled humanoid choices without changing profile defaults."""
+
+    manifest = load_manifest("resources/agent/assets.json")
+    if manifest.get("schema") != "humanclaw_agent_asset_registry_v1":
+        raise ValueError("Unsupported bundled agent-asset registry schema")
+    assets = manifest.get("assets")
+    if not isinstance(assets, dict) or not assets:
+        raise ValueError("Bundled agent-asset registry contains no assets")
+    return manifest
+
+
+def resolve_agent_asset(name: str) -> tuple[Path, Path]:
+    """Resolve one explicit bundled agent name to its URDF and root-shift files."""
+
+    manifest = agent_asset_registry()
+    assets = manifest["assets"]
+    entry = assets.get(str(name))
+    if not isinstance(entry, dict):
+        choices = ", ".join(sorted(assets))
+        raise ValueError(f"Unknown agent asset {name!r}; choose one of: {choices}")
+    urdf = resolve_release_path(entry.get("urdf", ""))
+    shift = resolve_release_path(entry.get("shift", ""))
+    if not urdf.is_file():
+        raise FileNotFoundError(f"Bundled agent URDF not found: {urdf}")
+    if not shift.is_file():
+        raise FileNotFoundError(f"Bundled agent root shift not found: {shift}")
+    return urdf, shift
+
+
 def weight_entries(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     """Flatten base and skill checkpoint records from a weight manifest."""
 

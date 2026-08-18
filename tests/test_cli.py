@@ -92,6 +92,8 @@ def test_run_cli_maps_public_options_to_the_episode_dispatcher(
                 "--video",
                 "--metrics",
                 "--resume",
+                "--agent-asset",
+                "finger-separated",
             ]
         )
         == 0
@@ -102,6 +104,7 @@ def test_run_cli_maps_public_options_to_the_episode_dispatcher(
     assert captured["save_video"] is True
     assert captured["compute_metrics"] is True
     assert captured["resume"] is True
+    assert captured["agent_asset"] == "finger-separated"
     assert json.loads(capsys.readouterr().out)["completed"] == 100
 
 

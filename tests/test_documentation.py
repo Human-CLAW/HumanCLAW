@@ -22,6 +22,10 @@ RELEASE_DOCUMENT_PAIRS = (
         "src/humanclaw_bench/motion/training/README.md",
         "src/humanclaw_bench/motion/training/README_zh.md",
     ),
+    (
+        "resources/agent/neutral_beta0_finger_separated/README.md",
+        "resources/agent/neutral_beta0_finger_separated/README_zh.md",
+    ),
 )
 
 

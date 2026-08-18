@@ -5,6 +5,7 @@ include weights/paper_fullval_v1/README.md
 include weights/paper_fullval_v1/README_zh.md
 recursive-include configs *.json
 recursive-include docs *.md
+recursive-include examples *.py
 recursive-include patches *.patch *.md
 recursive-include resources *
 recursive-exclude resources/hssd/humanclaw-hssd-val41/supplemental_objects *

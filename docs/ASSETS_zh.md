@@ -6,8 +6,11 @@
 
 仓库包含一个 Habitat split header 和 41 个 scene shard。Header 定义六个
 category 映射；41 个 shard 包含全部 1,218 个 Find/Nav/Interact episode。
-仓库还包含 beta-zero、hand-merged 的运行时人体，natural seed state，稳定后的
-environment metadata 和 provenance 记录。Motion Jerk 使用的 66 个
+仓库还包含 beta-zero、hand-merged 的论文默认运行时人体、一个可选分指人体、
+natural seed state、稳定后的 environment metadata 和 provenance 记录。可选
+人体为 30 个 finger link 分别提供 visual/collision mesh，必须通过
+`--agent-asset finger-separated` 显式选择；新增 contact 会改变 physics 和
+collision metric。Motion Jerk 使用的 66 个
 pelvis-relative neutral-joint 常数位于
 `resources/metrics/smpl_neutral_body22.json`；运行评测既不需要也不会重新
 分发完整 SMPL archive。版本化 planner/verifier prompt 是 `agent/` 下普通、
@@ -60,7 +63,9 @@ asset 分发，压缩大小 79.8 MiB，解压逻辑大小 176 MiB。
 仓库不再分发 AMASS、BABEL 或 neutral SMPL model，只在
 `resources/motion/training/manifests/` 提供八份透明的训练 CSV list（合计
 1.67 MB）。每行仅标识相对 AMASS chunk pickle 及其 source index，不包含
-motion array。用户应在本地构建 20-frame corpus，再按
+motion array。`resources/motion/training/segments/` 另提供人工 reviewed
+BABEL interval，以及最终实际使用 chunk 的首尾秒/毫秒时间；每个 segment 的
+chunk 数之和与机器训练 list 完全一致。用户应在本地构建 20-frame corpus，再按
 [motion training 说明](../src/humanclaw_bench/motion/training/README_zh.md)使用这些
 list。
 

@@ -46,6 +46,19 @@ humanclaw-bench run --episodes fullval --model-config my_model.json \
 ego/exo MP4；video 与 metrics 相互独立。不开启 `--metrics` 时，不会进行
 semantic rendering、contact query 或任何 metric accumulation。
 
+如需用可选分指人体运行同一个单 episode smoke test，先检查准备好的输入：
+
+```bash
+python examples/run_finger_separated_episode.py \
+  --model-config my_model.json \
+  --dry-run
+```
+
+去掉 `--dry-run` 即会启动 rollout。该示例使用标准的 HSSD 准备路径，保留
+`paper_fullval_v1` 及其 motion weights，只把显式 agent asset 改为
+`finger-separated`。如果 HSSD 准备在其他位置，请传入
+`--scene-dataset-config`。
+
 详细信息见[评测流程](docs/ARCHITECTURE_zh.md)、
 [指标定义](docs/METRICS_zh.md)、[视频工具](docs/VIDEOS_zh.md)和
 [模型接口约定](docs/MODELS_zh.md)。
@@ -91,12 +104,17 @@ src/humanclaw_bench/
 ```
 
 仓库不包含官方 HSSD mesh、motion weight、受许可约束的 motion dataset、
-provider credential 或模型 rollout 结果。仓库包含 motion training 实现与
-每个 skill 的精确 source-chunk list，详见
+provider credential 或模型 rollout 结果。仓库包含 motion training 实现、
+每个 skill 的精确 source-chunk list，以及以秒/毫秒展示的 reviewed segment
+时间，详见
 [`src/humanclaw_bench/motion/training/README_zh.md`](src/humanclaw_bench/motion/training/README_zh.md)。
 1,693 个 HSSD per-instance baked mesh 作为单独版本化的 gated Hugging Face
 asset 发布；仓库只保留其精确文件名、大小和 SHA256 manifest。仓库包含
 inference、replay recording 和 metric implementation。
+
+论文 benchmark 使用仓库内 hand-merged humanoid。仓库另提供一个供用户扩展的
+可选分指 URDF，可通过 `--agent-asset finger-separated` 选择；省略该参数时
+paper profile 完全不变。详见[资产说明](docs/ASSETS_zh.md)。
 
 ## 安装
 

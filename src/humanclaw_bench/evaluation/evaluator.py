@@ -16,6 +16,7 @@ from PIL import Image
 
 from humanclaw_bench.agent.skills import skill_to_text
 from humanclaw_bench.agent.types import PlannerResult
+from humanclaw_bench.assets import resolve_agent_asset
 from humanclaw_bench.benchmark.episodes import HCFindNavInteractEpisode
 from humanclaw_bench.config import ReleaseConfig
 from humanclaw_bench.envs.find_nav_interact_env import HCFindNavInteractEnv
@@ -231,6 +232,10 @@ class HCFindNavInteractEvaluator:
             self.profile,
             self.config["model_config_path"],
         )
+        if self.config.get("agent_asset"):
+            # Resolve here so a misspelled or incomplete optional asset fails
+            # before the simulator and motion model allocate heavy resources.
+            resolve_agent_asset(str(self.config["agent_asset"]))
 
     def evaluate_main(self) -> dict[str, Any]:
         """Construct episode, model, environment, motion runner, and ego agent, then evaluate."""
@@ -262,6 +267,14 @@ class HCFindNavInteractEvaluator:
         )
         if max_steps <= 0:
             raise ValueError("max_steps must be positive")
+        selected_agent = self.config.get("agent_asset")
+        if selected_agent:
+            agent_urdf, agent_shift = resolve_agent_asset(str(selected_agent))
+        else:
+            # The omitted flag is the reproducibility path: preserve the two
+            # exact asset paths pinned by the complete release profile.
+            agent_urdf = resolve_release_path(physics["agent_urdf"])
+            agent_shift = resolve_release_path(physics["agent_shift_npy"])
 
         scene_override = self.config.get("scene_dataset_config")
         scene_config = (
@@ -312,8 +325,8 @@ class HCFindNavInteractEvaluator:
             scene_id=episode.scene_id,
             scene_dataset_config=episode.scene_dataset_config,
             half_physics_backend=str(physics["backend"]),
-            agent_urdf=resolve_release_path(physics["agent_urdf"]),
-            agent_shift_npy=resolve_release_path(physics["agent_shift_npy"]),
+            agent_urdf=agent_urdf,
+            agent_shift_npy=agent_shift,
             physics_config=resolve_release_path(physics["physics_config"]),
             max_episode_steps=max_steps,
             lighting=str(rendering.get("lighting", "ambient")),

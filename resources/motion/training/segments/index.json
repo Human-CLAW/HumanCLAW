@@ -1,0 +1,86 @@
+{
+  "schema": "humanclaw_motion_segment_manifests_v1",
+  "description": "Human-readable reviewed intervals joined to the exact final training-chunk membership.",
+  "time_fields": {
+    "segment": "BABEL or human-reviewed source interval",
+    "used_chunks": "first start and last end among final selected chunks owned by that interval",
+    "seconds": "decimal seconds from the beginning of the AMASS sequence",
+    "milliseconds": "the corresponding timestamp rounded to the nearest millisecond"
+  },
+  "skills": {
+    "walk_forward": {
+      "path": "walk_forward.csv",
+      "accepted_source_segments": 507,
+      "final_used_segments": 493,
+      "final_training_chunks": 16023,
+      "source_manifest": "accepted_walk_forward_segment_manifest_clips_checked.csv",
+      "source_sha256": "accb25c8e771551ef49fd4c6f34da854fee081a46343f250f1ea530c1ee91741",
+      "sha256": "e000c43db794e3a0e033a3f0491c4343fc0104bdfe1cfe6f05d5f9b1570b0163"
+    },
+    "side_walk": {
+      "path": "side_walk.csv",
+      "accepted_source_segments": 84,
+      "final_used_segments": 67,
+      "final_training_chunks": 2012,
+      "source_manifest": "side_walk_plus_side_step_review_manifest_accepted84.csv",
+      "source_sha256": "d665cde4abdf85fcdfb88992903b171e8b30fdc273dc0eb7b45898cb76f8f210",
+      "sha256": "82ea7b1fd0c4c2ba9bd186499be374dc03df71306d45dd6b9d6e1c37d2732914",
+      "note": "Selection uses future/action-window containment; a complete chunk may begin before the reviewed interval."
+    },
+    "step_back": {
+      "path": "step_back.csv",
+      "accepted_source_segments": 144,
+      "final_used_segments": 129,
+      "final_training_chunks": 2294,
+      "source_manifest": "accepted_segment_manifest.csv",
+      "source_sha256": "1e478c8e69da5238ae611547b372cbfc71192b1347d8619362beefe9848d4188",
+      "sha256": "bc2bdf06c775c8b541e67f1c796b89bfd178b3f61e7538613c244ebbc3a85667"
+    },
+    "turn": {
+      "path": "turn.csv",
+      "accepted_source_segments": 510,
+      "final_used_segments": 436,
+      "final_training_chunks": 6773,
+      "source_manifest": "accepted_segment_manifest.csv",
+      "source_sha256": "ad5fd0ed5cb18a961567fdcda8139231d8a3b4da2385e68c656868f2c19a7f0e",
+      "sha256": "e1739b8b8af2290ea388d10a253f74f504c175922d6d864c171bc3729cc4f9a8"
+    },
+    "step_climb_up": {
+      "path": "step_climb_up.csv",
+      "accepted_source_segments": null,
+      "final_used_segments": 96,
+      "final_training_chunks": 2086,
+      "source_manifest": "chunk_level_avgsubseg_hd_yaw5_manifest.csv",
+      "source_sha256": "d68763d2518b003cf5e8a8fb0dffd9e3c8c62156fafdf4e42af5923a2d8a79c1",
+      "sha256": "71d2027d92a003c4b97f05a842479fbaf0818b2242776422458618dbefbc95b5",
+      "note": "The surviving final human-reviewed chunk manifest encodes each owner interval in reviewed_clip_filename; its older intermediate accepted-segment CSV is unavailable."
+    },
+    "step_climb_down": {
+      "path": "step_climb_down.csv",
+      "accepted_source_segments": 149,
+      "final_used_segments": 125,
+      "final_training_chunks": 2094,
+      "source_manifest": "accepted_segment_manifest.csv",
+      "source_sha256": "1444b1bef72f1083164a8ffa371796da80d7599bf82d90a708576ced5132525d",
+      "sha256": "6ed1f39fa42a817783a6c03818908a65979094439a8bf728b1ee8496a2780f4c"
+    },
+    "stop": {
+      "path": "stop.csv",
+      "accepted_source_segments": 205,
+      "final_used_segments": 111,
+      "final_training_chunks": 4011,
+      "source_manifest": "accepted_still_stop_segment_manifest_clips_check.csv",
+      "source_sha256": "0f5edb4ae615c1f283c2176f263334b4a20e7c3dd7a56d4be4f36a0188893b41",
+      "sha256": "c8cd6eea9b60d4b137b65704bdcb1fa8780fc5f805ae9ca2cfe12203055c38ef"
+    },
+    "sit": {
+      "path": "sit.csv",
+      "accepted_source_segments": 132,
+      "final_used_segments": 116,
+      "final_training_chunks": 5912,
+      "source_manifest": "accepted_segment_manifest.csv",
+      "source_sha256": "b7a841a6ba75451255ce5b4db98a3278e5ff303b69f879500b96a6b668208349",
+      "sha256": "31eb928d1369d030b611d14dd1295293fe4b9daf88aafb48fc18eb4029dc55fd"
+    }
+  }
+}

@@ -16,6 +16,20 @@ def _print_json(value) -> None:
     print(json.dumps(value, indent=2, ensure_ascii=False, default=str))
 
 
+def _add_agent_asset_argument(parser: argparse.ArgumentParser) -> None:
+    """Expose the optional bundled humanoid without changing paper defaults."""
+
+    parser.add_argument(
+        "--agent-asset",
+        choices=("paper", "finger-separated"),
+        default=None,
+        help=(
+            "optional bundled humanoid override; omit this flag to use the "
+            "agent paths pinned by the selected release profile"
+        ),
+    )
+
+
 def _build_parser() -> argparse.ArgumentParser:
     """Construct the command-line parser and all rollout/render/asset subcommands."""
 
@@ -97,6 +111,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="also compute every benchmark metric and aggregate the run",
     )
+    _add_agent_asset_argument(run)
 
     rollout = commands.add_parser("rollout", help="run one episode")
     rollout.add_argument("--profile", default="paper_fullval_v1")
@@ -129,6 +144,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="compute the paper metrics and write one metrics.json",
     )
+    _add_agent_asset_argument(rollout)
 
     batch = commands.add_parser("batch", help="run an episode slice in parallel")
     batch.add_argument("--profile", default="paper_fullval_v1")
@@ -158,6 +174,7 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="compute_metrics",
         action="store_true",
     )
+    _add_agent_asset_argument(batch)
 
     metrics = commands.add_parser(
         "metrics",
@@ -314,6 +331,7 @@ def main(argv: list[str] | None = None) -> int:
                 "scene_dataset_config": args.scene_dataset_config,
                 "save_video": args.video,
                 "compute_metrics": args.metrics,
+                "agent_asset": args.agent_asset,
             }
         )
         _print_json(summary)

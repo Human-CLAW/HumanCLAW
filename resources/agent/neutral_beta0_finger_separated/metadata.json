@@ -1,0 +1,29 @@
+{
+  "schema": "humanclaw_agent_asset_v1",
+  "name": "neutral_beta0_finger_separated",
+  "description": "Optional neutral SMPL-X beta=0 humanoid with independent visual and collision geometry for every finger link.",
+  "paper_default": false,
+  "model_source": "SMPL-X neutral body with all ten shape coefficients set to zero; the source body model is not required at runtime.",
+  "mesh_mode": "convex_hull",
+  "links": 55,
+  "joints": 54,
+  "joint_type": "spherical",
+  "visual_links": 55,
+  "collision_links": 55,
+  "finger_links": 30,
+  "finger_links_with_independent_visual_geometry": 30,
+  "finger_links_with_independent_collision_geometry": 30,
+  "runtime_files": {
+    "urdf": "neutral_beta0.urdf",
+    "shift": "shift.npy",
+    "mesh_directory": "meshes"
+  },
+  "source_asset_identity": {
+    "file_count": 57,
+    "size_bytes": 492436,
+    "membership_sha256": "d598a22cf2b000325a3b66c8e987493197213ef5d8c65224fed85ad3aca693a2",
+    "urdf_sha256": "caf3be74ee250469b20a5e7fcb18a2f0959854a6af1e337ba00f8d85f559059d",
+    "shift_sha256": "db9b25c40b815ab40aeadf77c3a7c1eaf52395ad3de142ac2405fc56b3658923"
+  },
+  "compatibility_note": "This optional asset preserves the SMPL-X link names used by the motion runtime, but its additional finger collisions change contact physics and benchmark collision measurements relative to the paper-default hand-merged asset."
+}
