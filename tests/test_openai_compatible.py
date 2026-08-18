@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-import openai
+import pytest
+
+openai = pytest.importorskip("openai")
 
 from humanclaw_bench.vlm.factory import build_model
 from humanclaw_bench.vlm.openai_compatible import OpenAICompatibleModel
