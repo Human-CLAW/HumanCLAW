@@ -629,7 +629,7 @@ If you find HumanCLAW useful, please cite:
 ```bibtex
 @article{siyao2026humanclaw,
   title   = {HumanCLAW: Can Vision-Language Models Act Through a Body?},
-  author  = {Li, Siyao and Gu, Jiawei and Liu, Shuai and Hu, Kairui and Li, Zekun and
+  author  = {Siyao, Li and Gu, Jiawei and Liu, Shuai and Hu, Kairui and Li, Zekun and
              Li, Linjie and Tang, Chengcheng and Wu, Po-Chen and Shugurov, Ivan and
              Ma, Lingni and Zollhoefer, Michael and An, Sizhe and Mittal, Abhay and
              Zhao, Amy and Krishna, Ranjay and Li, Manling and Liu, Ziwei and Guo, Chuan},
