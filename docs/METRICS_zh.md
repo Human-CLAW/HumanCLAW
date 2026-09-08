@@ -97,11 +97,25 @@ requested motion，也不会在 episode 结束时执行第二轮 contact pass。
 从同一帧起以及之后的每一帧，affected 状态沿 dynamic-to-dynamic contact edge
 传播。时间顺序确保未来的 contact 不会反向影响过去。
 
-- `#Dtb/ep`：全部 episode 的 affected-object 数量均值。
+- `#Dtb/ep`：全部 episode 中仍留在场景内的 affected object 数量均值。
 - `dDtb(m)`：每个成功映射的 affected object 从首次受影响帧开始的 path
   length 总和，除以所有成功映射 object 的总数。
 
 距离是 pooled object-level mean，不是 episode mean 的均值。
+
+### 离开场景的 object
+
+地垫、踏脚石这类贴地的薄 dynamic object 在极少数情况下会在 humanoid 的脚下
+穿过静态场景几何，之后在 episode 剩余时间里自由下落。从那一刻起，它的运动
+不再描述对场景的扰动。因此，任何 affected object 只要最终比自己的初始高度
+低出 `metrics.disturbance_escape_drop_m` 以上，就视为已离开场景，不计入
+`#Dtb`、`dDtb` 和 direct/indirect 计数。`paper_fullval_v1` 使用 5 m，比
+HSSD 房屋内任何跌落都深，普通跌落不受影响。
+
+每个 `metrics.json` 在 `affected_dynamic_objects` 中列出每个计入的 object
+及其 path length，在 `escaped_affected_dynamic_objects` 中列出已离开场景的
+affected object，在 `scene_escaped_dynamic_objects` 中列出任何离开场景的
+dynamic object，无论 humanoid 是否碰到。汇总结果携带这两个总数。
 
 ## Motion Jerk
 

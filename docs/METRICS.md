@@ -109,11 +109,29 @@ At each same or later frame, affected status propagates across dynamic-to-
 dynamic contact edges. Time ordering prevents a future contact from affecting
 an object retroactively.
 
-- `#Dtb/ep`: mean affected-object count across all episodes.
+- `#Dtb/ep`: mean count of affected objects that remain in the scene, across
+  all episodes.
 - `dDtb(m)`: sum of each mapped affected object's path length beginning at its
   first affected frame, divided by the total mapped affected-object count.
 
 The distance is a pooled object-level mean, not a mean of episode means.
+
+### Objects that leave the scene
+
+A thin floor-level dynamic object such as a mat or a stepping stone can, in
+rare cases, pass through the static scene geometry under the humanoid's feet
+and then fall freely for the rest of the episode. From that point its motion
+no longer describes a disturbance of the scene. An affected object that ends
+up more than `metrics.disturbance_escape_drop_m` below its own initial height
+is therefore treated as having left the scene and is not counted in `#Dtb`,
+`dDtb`, or the direct/indirect counts. `paper_fullval_v1` uses 5 m, deeper
+than any drop inside an HSSD house, so ordinary falls are unaffected.
+
+Each `metrics.json` lists every counted object with its path length under
+`affected_dynamic_objects`, the affected objects that left the scene under
+`escaped_affected_dynamic_objects`, and any dynamic object that left the scene
+whether or not the humanoid touched it under `scene_escaped_dynamic_objects`.
+The aggregate summary carries both totals.
 
 ## Motion Jerk
 

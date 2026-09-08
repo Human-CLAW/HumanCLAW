@@ -26,6 +26,7 @@ def test_profiles_are_complete_and_non_inheriting():
     )
     assert config.data["metrics"]["fixed_contact_min_height_m"] == 0.0205
     assert config.data["metrics"]["jerk_stride"] == 8
+    assert config.data["metrics"]["disturbance_escape_drop_m"] == 5.0
 
 
 def test_runtime_paths_are_release_relative():
