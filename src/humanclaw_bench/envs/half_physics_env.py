@@ -370,6 +370,11 @@ class HalfPhysicsEnv:
         root_linear_xz_command_substeps: tuple[int, ...] | list[int] = (
             DEFAULT_ROOT_LINEAR_XZ_COMMAND_SUBSTEPS
         ),
+        sleep_dynamic_objects_at_reset: bool = True,
+        dynamic_object_sleep_warmup_seconds: float = 0.5,
+        dynamic_object_support_probe_seconds: float = 0.5,
+        dynamic_object_support_probe_drop_m: float = 0.05,
+        dynamic_object_max_drop_m: float = 0.1,
         friction: float = 0.4,
         build_runtime: bool = True,
     ) -> None:
@@ -423,6 +428,25 @@ class HalfPhysicsEnv:
                 "root_linear_xz_command_substeps contains indices outside "
                 f"[0, {self.pjsc_substeps}): {invalid_substeps}"
             )
+        self.sleep_dynamic_objects_at_reset = bool(sleep_dynamic_objects_at_reset)
+        self.dynamic_object_sleep_warmup_seconds = float(
+            dynamic_object_sleep_warmup_seconds
+        )
+        if self.dynamic_object_sleep_warmup_seconds < 0.0:
+            raise ValueError("dynamic_object_sleep_warmup_seconds must be >= 0")
+        self.dynamic_object_support_probe_seconds = float(
+            dynamic_object_support_probe_seconds
+        )
+        if self.dynamic_object_support_probe_seconds < 0.0:
+            raise ValueError("dynamic_object_support_probe_seconds must be >= 0")
+        self.dynamic_object_support_probe_drop_m = float(
+            dynamic_object_support_probe_drop_m
+        )
+        if self.dynamic_object_support_probe_drop_m <= 0.0:
+            raise ValueError("dynamic_object_support_probe_drop_m must be > 0")
+        self.dynamic_object_max_drop_m = float(dynamic_object_max_drop_m)
+        if self.dynamic_object_max_drop_m <= 0.0:
+            raise ValueError("dynamic_object_max_drop_m must be > 0")
         self._runtime: Optional[RuntimeModules] = None
         self.sim: Any = None
         self.agent: Any = None
@@ -435,6 +459,11 @@ class HalfPhysicsEnv:
         self._left_eye_link_id: Optional[int] = None
         self._right_eye_link_id: Optional[int] = None
         self._link_id_to_name: dict[int, str] = {}
+        self._scene_object_gravity_active_ids: Optional[set[int]] = None
+        self._scene_object_gravity_quarantined_ids: Optional[set[int]] = None
+        self._scene_object_rest_states: Optional[
+            dict[int, tuple[np.ndarray, np.ndarray]]
+        ] = None
 
         self._current_step = 0
         self._reset = False
@@ -701,9 +730,102 @@ class HalfPhysicsEnv:
         self.agent.joint_positions = joint_quats.reshape(-1).tolist()
         self.agent.motion_type = runtime.motion_type.DYNAMIC
 
+        if self.sleep_dynamic_objects_at_reset:
+            self._sleep_dynamic_scene_objects(runtime)
+        else:
+            self._scene_object_gravity_active_ids = None
+            self._scene_object_gravity_quarantined_ids = None
+            self._scene_object_rest_states = None
+
         self._update_cameras()
         obs = self.sim.get_sensor_observations()
         return dict(obs)
+
+    def _sleep_dynamic_scene_objects(self, runtime: Any) -> None:
+        """Capture a stable dynamic-scene equilibrium before agent motion.
+
+        HP disables global simulator gravity and applies object gravity as an
+        external force.  Some HSSD dynamic furniture has imperfect support
+        collision, so continuously forcing every body can make untouched
+        objects tunnel through the stage.  A zero-gravity warm-up settles
+        initial contacts, after which the resulting poses remain locked until
+        the humanoid reaches each object's dynamic contact component.
+        """
+
+        zero = runtime.mn.Vector3(0.0, 0.0, 0.0)
+        scene_objects = self._tracked_dynamic_objects()
+        self._scene_object_gravity_active_ids = set()
+        self._scene_object_gravity_quarantined_ids = set()
+        self._scene_object_rest_states = {}
+        current_sim_gravity = np.asarray(self.sim.get_gravity(), dtype=np.float64)
+        if np.linalg.norm(current_sim_gravity) > 1.0e-12:
+            self.sim.set_gravity([0.0, 0.0, 0.0])
+
+        saved_agent_transformation = runtime.mn.Matrix4(self.agent.transformation)
+        saved_agent_joint_positions = self.agent.joint_positions.copy()
+        self.agent.motion_type = runtime.motion_type.KINEMATIC
+        self.agent.translation = runtime.mn.Vector3(0.0, 1000.0, 0.0)
+        try:
+            for obj in scene_objects.values():
+                obj.linear_velocity = zero
+                obj.angular_velocity = zero
+                try:
+                    obj.awake = False
+                except Exception:
+                    pass
+            warmup_dt = 1.0 / (self.fps * max(1, self.pjsc_substeps))
+            warmup_steps = int(
+                np.ceil(self.dynamic_object_sleep_warmup_seconds / warmup_dt)
+            )
+            for _ in range(warmup_steps):
+                self.sim.step_physics(warmup_dt)
+            for obj in scene_objects.values():
+                q = obj.rotation
+                self._scene_object_rest_states[int(obj.object_id)] = (
+                    self._vector3_array(obj.translation).astype(np.float64),
+                    np.asarray(
+                        [q.vector.x, q.vector.y, q.vector.z, q.scalar],
+                        dtype=np.float64,
+                    ),
+                )
+
+            # Probe authored support collision before the humanoid can touch
+            # the scene.  Objects that drop under ordinary gravity during this
+            # short isolated probe are not safe to simulate dynamically.
+            probe_steps = int(
+                np.ceil(self.dynamic_object_support_probe_seconds / warmup_dt)
+            )
+            movable_items = tuple(scene_objects.values())
+            for obj in movable_items:
+                try:
+                    obj.awake = True
+                except Exception:
+                    pass
+            for _ in range(probe_steps):
+                runtime.hp.apply_gravity_to_movable_items(movable_items)
+                self.sim.step_physics(warmup_dt)
+            assert self._scene_object_gravity_quarantined_ids is not None
+            for obj in movable_items:
+                object_id = int(obj.object_id)
+                rest_translation = self._scene_object_rest_states[object_id][0]
+                current_translation = self._vector3_array(obj.translation)
+                if (
+                    not np.isfinite(current_translation).all()
+                    or float(current_translation[1])
+                    < float(rest_translation[1])
+                    - self.dynamic_object_support_probe_drop_m
+                ):
+                    self._scene_object_gravity_quarantined_ids.add(object_id)
+
+            runtime.hp.restore_inactive_scene_object_rest_states(
+                movable_items,
+                set(),
+                self._scene_object_rest_states,
+            )
+        finally:
+            self.agent.transformation = saved_agent_transformation
+            self.agent.joint_positions = saved_agent_joint_positions
+            self.agent.motion_type = runtime.motion_type.DYNAMIC
 
     def step(
         self,
@@ -940,12 +1062,6 @@ class HalfPhysicsEnv:
             pose_urdf_order = body_pose[t][self.smplx2urdf]
             orient = global_orient[t]
 
-            for obj in tracked_objects.values():
-                try:
-                    obj.awake = True
-                except Exception:
-                    pass
-
             # Generated chunks include their own first pose but no preceding
             # within-chunk displacement.  Giving frame zero a zero translation
             # command avoids inventing motion across the action boundary; the
@@ -966,6 +1082,26 @@ class HalfPhysicsEnv:
                 pjsc_lambda_by_link=self.pjsc_lambda_by_link,
                 pjsc_substeps=self.pjsc_substeps,
                 root_linear_xz_command_substeps=(self.root_linear_xz_command_substeps),
+                scene_object_gravity_active_ids=(
+                    self._scene_object_gravity_active_ids
+                    if self.sleep_dynamic_objects_at_reset
+                    else None
+                ),
+                scene_object_gravity_quarantined_ids=(
+                    self._scene_object_gravity_quarantined_ids
+                    if self.sleep_dynamic_objects_at_reset
+                    else None
+                ),
+                scene_object_rest_states=(
+                    self._scene_object_rest_states
+                    if self.sleep_dynamic_objects_at_reset
+                    else None
+                ),
+                scene_object_max_drop_m=(
+                    self.dynamic_object_max_drop_m
+                    if self.sleep_dynamic_objects_at_reset
+                    else None
+                ),
             )
 
             if self.collect_metric_contacts:

@@ -179,7 +179,7 @@ def test_fullval_half_physics_backend_is_the_validated_standalone_file():
     )
     text = backend.read_text(encoding="utf-8")
     assert hashlib.sha256(backend.read_bytes()).hexdigest() == (
-        "af1d2154f941e8f55922e66d87b509497d716e1c21ce4027c3061d0eeb42e320"
+        "cd863b19c44a726b3d48ee1323ec1ae616d35011c0e020d845e896a65a50e41d"
     )
     assert "ANGULAR_LIMIT_DEGREES_PER_FRAME = 30.0" in text
     assert "SHOULDER_PJSC_POSITION_GAIN = 0.03" in text

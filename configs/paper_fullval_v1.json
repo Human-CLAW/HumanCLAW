@@ -60,6 +60,11 @@
     },
     "pjsc_substeps": 4,
     "root_linear_xz_command_substeps": [0, 2],
+    "sleep_dynamic_objects_at_reset": true,
+    "dynamic_object_sleep_warmup_seconds": 0.5,
+    "dynamic_object_support_probe_seconds": 0.5,
+    "dynamic_object_support_probe_drop_m": 0.05,
+    "dynamic_object_max_drop_m": 0.1,
     "friction": 0.4
   },
   "rendering": {
