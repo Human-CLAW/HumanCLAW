@@ -10,7 +10,7 @@
 
 [![Weights](https://img.shields.io/badge/🤗_Weights-HumanCLAW-ffd21e)](https://huggingface.co/HumanCLAW/HumanCLAW)
 [![Dataset](https://img.shields.io/badge/🤗_Dataset-HumanCLAW--HSSD-ffd21e)](https://huggingface.co/datasets/HumanCLAW/HumanCLAW-HSSD)
-[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg?logo=creativecommons&logoColor=white)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 </div>
 
@@ -617,10 +617,10 @@ See `docs/ASSETS.md`, `docs/ARCHITECTURE.md`, `docs/METRICS.md`, and
 
 ## License
 
-This release — code, configuration, and bundled resources — is licensed for
-non-commercial use under [CC BY-NC 4.0](LICENSE). The motion weights and the
-HSSD supplement distributed on Hugging Face carry the same license. Official
-HSSD data remains subject to its own license and access terms.
+This release (code, configuration, and bundled resources) is licensed under the
+[Apache License 2.0](LICENSE); see [NOTICE](NOTICE) for attribution. The motion
+weights and HSSD supplement distributed on Hugging Face carry the same license.
+Official HSSD data remains subject to its own license and access terms.
 
 ## 📌 Citation
 
