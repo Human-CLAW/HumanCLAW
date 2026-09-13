@@ -101,6 +101,21 @@ def build_replay_metadata(
             "root_linear_xz_command_substeps": list(
                 getattr(env, "root_linear_xz_command_substeps", (0, 2))
             ),
+            "sleep_dynamic_objects_at_reset": bool(
+                getattr(env, "sleep_dynamic_objects_at_reset", False)
+            ),
+            "dynamic_object_sleep_warmup_seconds": float(
+                getattr(env, "dynamic_object_sleep_warmup_seconds", 0.5)
+            ),
+            "dynamic_object_support_probe_seconds": float(
+                getattr(env, "dynamic_object_support_probe_seconds", 0.5)
+            ),
+            "dynamic_object_support_probe_drop_m": float(
+                getattr(env, "dynamic_object_support_probe_drop_m", 0.05)
+            ),
+            "dynamic_object_max_drop_m": float(
+                getattr(env, "dynamic_object_max_drop_m", 0.1)
+            ),
             "friction": float(getattr(env, "friction", 0.4)),
         },
         # Pin camera/light settings as part of replay metadata.  A delayed
