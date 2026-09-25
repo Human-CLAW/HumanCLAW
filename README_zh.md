@@ -565,3 +565,19 @@ Asset、execution、metric 和 provider 约定分别见
 本 release（代码、配置与随包 resources）以 [Apache License 2.0](LICENSE)
 发布，署名信息见 [NOTICE](NOTICE)。Hugging Face 上分发的 motion weights 与 HSSD
 supplement 采用相同许可。官方 HSSD 数据仍受其自身许可与访问条款约束。
+
+## 📌 引用
+
+如果 HumanCLAW 对你的研究有帮助，请引用：
+
+```bibtex
+@article{siyao2026humanclaw,
+  title   = {HumanCLAW: Can Vision-Language Models Act Through a Body?},
+  author  = {Siyao, Li and Gu, Jiawei and Liu, Shuai and Hu, Kairui and Li, Zekun and
+             Li, Linjie and Tang, Chengcheng and Wu, Po-Chen and Shugurov, Ivan and
+             Ma, Lingni and Zollhoefer, Michael and An, Sizhe and Mittal, Abhay and
+             Zhao, Amy and Krishna, Ranjay and Li, Manling and Liu, Ziwei and Guo, Chuan},
+  journal = {arXiv preprint arXiv:2607.27180},
+  year    = {2026}
+}
+```
