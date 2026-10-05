@@ -85,10 +85,18 @@ def load_render_contract(rollout_dir: str | Path) -> RenderContract:
         if isinstance(profile_ref, dict)
         else dict(load_config(str(profile_ref)).data)
     )
+    manifest_physics = dict(value.get("physics") or {})
     physics = {
         **dict(profile.get("physics") or {}),
-        **dict(value.get("physics") or {}),
+        **manifest_physics,
     }
+    # Initial public replay manifests predate dynamic-object equilibrium
+    # locking.  They must keep the legacy policy even after the named profile
+    # gains the new setting; newly recorded manifests pin both fields.
+    if "sleep_dynamic_objects_at_reset" not in manifest_physics:
+        physics["sleep_dynamic_objects_at_reset"] = False
+    if "dynamic_object_sleep_warmup_seconds" not in manifest_physics:
+        physics["dynamic_object_sleep_warmup_seconds"] = 0.5
     rendering = {
         **dict(profile.get("rendering") or {}),
         **dict(value.get("rendering") or {}),
@@ -196,6 +204,21 @@ def environment_kwargs(contract: RenderContract) -> dict[str, Any]:
         "pjsc_substeps": int(physics.get("pjsc_substeps", 4)),
         "root_linear_xz_command_substeps": tuple(
             physics.get("root_linear_xz_command_substeps", (0, 2))
+        ),
+        "sleep_dynamic_objects_at_reset": bool(
+            physics.get("sleep_dynamic_objects_at_reset", False)
+        ),
+        "dynamic_object_sleep_warmup_seconds": float(
+            physics.get("dynamic_object_sleep_warmup_seconds", 0.5)
+        ),
+        "dynamic_object_support_probe_seconds": float(
+            physics.get("dynamic_object_support_probe_seconds", 0.5)
+        ),
+        "dynamic_object_support_probe_drop_m": float(
+            physics.get("dynamic_object_support_probe_drop_m", 0.05)
+        ),
+        "dynamic_object_max_drop_m": float(
+            physics.get("dynamic_object_max_drop_m", 0.1)
         ),
         "friction": float(physics.get("friction", 0.4)),
         "lighting": str(rendering.get("lighting", "ambient")),

@@ -11,7 +11,9 @@ The constants in this module are the validated release settings:
 * PJSC position gains are 0.03 for shoulders and 0.1 for wrists;
 * the root x/z command is injected on zero-based physics substeps 0 and 2;
 * the root angular command is injected only once, before substep 0; and
-* gravity is applied to movable rigid objects before every physics substep.
+* gravity is applied to agent-activated movable rigid objects before every
+  physics substep; authored scene objects stay at their reset equilibrium until
+  the human reaches their dynamic contact graph.
 
 The PJSC target trajectory intentionally uses the *pre-limit* joint velocity.
 The 30-degree cap therefore limits the direct velocity drive without slowing
@@ -115,28 +117,245 @@ def make_smplx_and_urdf_mappings(agent):
 
 
 def suspend_all_movable_items(sim):
-    """Retained for the original hp_step contract; gravity is per substep."""
-    del sim
-    return {}
+    """Collect dynamic rigid objects that need manual gravity during HP stepping."""
 
-
-def _apply_movable_object_gravity(sim):
-    """Apply one substep's persistent gravity force to every dynamic object."""
+    movable_items = []
     rom = sim.get_rigid_object_manager()
     for handle in rom.get_object_handles():
         obj = rom.get_object_by_handle(handle)
         if obj.motion_type == MotionType.DYNAMIC:
-            obj.apply_force(
-                mn.Vector3([0.0, -MOVABLE_OBJECT_GRAVITY_MPS2, 0.0]) * obj.mass,
-                [0.0, 0.0, 0.0],
+            movable_items.append(obj)
+    return tuple(movable_items)
+
+
+def apply_gravity_to_movable_items(
+    movable_items,
+    gravity_active_object_ids=None,
+    gravity_quarantined_object_ids=None,
+):
+    """Apply gravity to dynamic objects selected by the activation policy.
+
+    Habitat clears external-force accumulators after every physics step.  HP
+    disables simulator gravity so human root gravity can be controlled
+    separately, therefore ``-m*g`` must be applied before every Bullet
+    substep.  When ``gravity_active_object_ids`` is supplied, untouched scene
+    objects are deliberately excluded until the human contacts their dynamic
+    contact component.
+    """
+
+    gravity = mn.Vector3([0.0, -MOVABLE_OBJECT_GRAVITY_MPS2, 0.0])
+    for obj in movable_items:
+        if obj.motion_type != MotionType.DYNAMIC:
+            continue
+        object_id = int(obj.object_id)
+        if (
+            gravity_quarantined_object_ids is not None
+            and object_id in gravity_quarantined_object_ids
+        ):
+            continue
+        if (
+            gravity_active_object_ids is not None
+            and object_id not in gravity_active_object_ids
+        ):
+            continue
+        obj.apply_force(gravity * obj.mass, [0.0, 0.0, 0.0])
+
+
+def activate_scene_object_gravity_from_contacts(
+    sim,
+    agent,
+    movable_items,
+    gravity_active_object_ids,
+    gravity_quarantined_object_ids=None,
+):
+    """Activate the agent-connected graph of dynamic scene objects.
+
+    Stage and static contacts are excluded; otherwise the shared floor would
+    connect nearly every object and defeat the activation boundary.
+    """
+
+    if gravity_active_object_ids is None:
+        return
+
+    quarantined_ids = set(gravity_quarantined_object_ids or ())
+    movable_by_id = {
+        int(obj.object_id): obj
+        for obj in movable_items
+        if int(obj.object_id) not in quarantined_ids
+    }
+    agent_id = int(agent.object_id)
+    connected_ids = {agent_id, *gravity_active_object_ids}
+    contact_edges: list[tuple[int, int]] = []
+    for point in sim.get_physics_contact_points():
+        if not bool(point.is_active):
+            continue
+        object_id_a = int(point.object_id_a)
+        object_id_b = int(point.object_id_b)
+        if object_id_a not in movable_by_id and object_id_a != agent_id:
+            continue
+        if object_id_b not in movable_by_id and object_id_b != agent_id:
+            continue
+        contact_edges.append((object_id_a, object_id_b))
+
+    changed = True
+    while changed:
+        changed = False
+        for object_id_a, object_id_b in contact_edges:
+            if object_id_a in connected_ids and object_id_b not in connected_ids:
+                connected_ids.add(object_id_b)
+                changed = True
+            elif object_id_b in connected_ids and object_id_a not in connected_ids:
+                connected_ids.add(object_id_a)
+                changed = True
+
+    newly_active = (connected_ids & movable_by_id.keys()) - gravity_active_object_ids
+    gravity_active_object_ids.update(newly_active)
+    for object_id in newly_active:
+        try:
+            movable_by_id[object_id].awake = True
+        except Exception:
+            pass
+
+
+def quarantine_dropped_scene_objects(
+    movable_items,
+    gravity_active_object_ids,
+    gravity_quarantined_object_ids,
+    scene_object_rest_states,
+    max_drop_m,
+):
+    """Quarantine an activated object once it leaves its reset support region.
+
+    This is a physical fail-safe for malformed or missing support collision.
+    Quarantined bodies are removed from manual gravity and restored by the
+    normal inactive-object path below; the recorded trajectory therefore never
+    accumulates an unbounded fall through the scene.
+    """
+
+    if (
+        gravity_active_object_ids is None
+        or gravity_quarantined_object_ids is None
+        or scene_object_rest_states is None
+        or max_drop_m is None
+    ):
+        return
+    threshold = float(max_drop_m)
+    for obj in movable_items:
+        object_id = int(obj.object_id)
+        if object_id not in gravity_active_object_ids:
+            continue
+        rest_state = scene_object_rest_states.get(object_id)
+        if rest_state is None:
+            continue
+        current = np.asarray(obj.translation, dtype=np.float64).reshape(-1)
+        rest_translation = np.asarray(rest_state[0], dtype=np.float64).reshape(-1)
+        escaped = (
+            current.shape[0] < 2
+            or rest_translation.shape[0] < 2
+            or not np.isfinite(current[:3]).all()
+            or float(current[1]) < float(rest_translation[1]) - threshold
+        )
+        if escaped:
+            if current.shape[0] >= 3 and np.isfinite(current[:3]).all():
+                # Preserve contact-induced horizontal displacement and
+                # rotation.  Only project the unsupported vertical component
+                # back to its reset support plane before freezing the body.
+                corrected_translation = current[:3].copy()
+                corrected_translation[1] = float(rest_translation[1])
+                quaternion = obj.rotation
+                corrected_rotation = np.asarray(
+                    [
+                        quaternion.vector.x,
+                        quaternion.vector.y,
+                        quaternion.vector.z,
+                        quaternion.scalar,
+                    ],
+                    dtype=np.float64,
+                )
+                if np.isfinite(corrected_rotation).all():
+                    scene_object_rest_states[object_id] = (
+                        corrected_translation,
+                        corrected_rotation,
+                    )
+            gravity_active_object_ids.discard(object_id)
+            gravity_quarantined_object_ids.add(object_id)
+
+
+def restore_inactive_scene_object_rest_states(
+    movable_items,
+    gravity_active_object_ids,
+    scene_object_rest_states,
+):
+    """Keep untouched scene objects at their post-warmup equilibrium poses."""
+
+    if gravity_active_object_ids is None or scene_object_rest_states is None:
+        return
+    zero = mn.Vector3(0.0, 0.0, 0.0)
+    for obj in movable_items:
+        object_id = int(obj.object_id)
+        if object_id in gravity_active_object_ids:
+            continue
+        rest_state = scene_object_rest_states.get(object_id)
+        if rest_state is None:
+            continue
+        translation, rotation_xyzw = rest_state
+        obj.translation = mn.Vector3(translation)
+        obj.rotation = mn.Quaternion(
+            (
+                (
+                    float(rotation_xyzw[0]),
+                    float(rotation_xyzw[1]),
+                    float(rotation_xyzw[2]),
+                ),
+                float(rotation_xyzw[3]),
             )
+        )
+        obj.linear_velocity = zero
+        obj.angular_velocity = zero
+        try:
+            obj.awake = False
+        except Exception:
+            pass
 
 
-def _step_physics_with_movable_object_gravity(sim, dt):
-    """Apply persistent gravity to movable objects, then advance one Bullet substep."""
+def _step_physics_with_movable_object_gravity(
+    sim,
+    agent,
+    movable_items,
+    dt,
+    *,
+    gravity_active_object_ids=None,
+    gravity_quarantined_object_ids=None,
+    scene_object_rest_states=None,
+    scene_object_max_drop_m=None,
+):
+    """Apply controlled object gravity, advance Bullet, and enforce equilibrium."""
 
-    _apply_movable_object_gravity(sim)
+    apply_gravity_to_movable_items(
+        movable_items,
+        gravity_active_object_ids,
+        gravity_quarantined_object_ids,
+    )
     sim.step_physics(dt)
+    activate_scene_object_gravity_from_contacts(
+        sim,
+        agent,
+        movable_items,
+        gravity_active_object_ids,
+        gravity_quarantined_object_ids,
+    )
+    quarantine_dropped_scene_objects(
+        movable_items,
+        gravity_active_object_ids,
+        gravity_quarantined_object_ids,
+        scene_object_rest_states,
+        scene_object_max_drop_m,
+    )
+    restore_inactive_scene_object_rest_states(
+        movable_items,
+        gravity_active_object_ids,
+        scene_object_rest_states,
+    )
 
 
 def resume_all_movable_items(sim, rigid_states):
@@ -737,6 +956,10 @@ def hp_step(
     pjsc_substeps=4,
     root_linear_xz_command_substeps=DEFAULT_ROOT_LINEAR_XZ_COMMAND_SUBSTEPS,
     root_gravity_mode="midpoint",
+    scene_object_gravity_active_ids=None,
+    scene_object_gravity_quarantined_ids=None,
+    scene_object_rest_states=None,
+    scene_object_max_drop_m=None,
 ):
     """Advance the articulated human by one motion-generator frame.
 
@@ -792,7 +1015,17 @@ def hp_step(
         next_translation,
     )
 
-    sim.set_gravity([0.0, 0.0, 0.0])
+    # Calling set_gravity reactivates all Bullet bodies even when the value is
+    # unchanged.  Avoid doing that under the equilibrium policy because scene
+    # objects intentionally remain inactive until contacted.  Preserve the
+    # repeated legacy call when no activation set is supplied so old replay
+    # manifests retain their original execution path.
+    if scene_object_gravity_active_ids is None:
+        sim.set_gravity([0.0, 0.0, 0.0])
+    else:
+        current_sim_gravity = np.asarray(sim.get_gravity(), dtype=np.float64)
+        if np.linalg.norm(current_sim_gravity) > 1.0e-12:
+            sim.set_gravity([0.0, 0.0, 0.0])
     movable_states = suspend_all_movable_items(sim)
     art_agent.motion_type = MotionType.DYNAMIC
 
@@ -912,7 +1145,18 @@ def hp_step(
                         pjsc_lambda,
                         pjsc_lambda_by_link,
                     )
-                _step_physics_with_movable_object_gravity(sim, sub_dt)
+                _step_physics_with_movable_object_gravity(
+                    sim,
+                    art_agent,
+                    movable_states,
+                    sub_dt,
+                    gravity_active_object_ids=scene_object_gravity_active_ids,
+                    gravity_quarantined_object_ids=(
+                        scene_object_gravity_quarantined_ids
+                    ),
+                    scene_object_rest_states=scene_object_rest_states,
+                    scene_object_max_drop_m=scene_object_max_drop_m,
+                )
                 if use_midpoint_gravity:
                     current_root_velocity = _apply_substep_root_gravity(
                         art_agent.root_linear_velocity,
