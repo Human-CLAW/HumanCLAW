@@ -80,7 +80,11 @@ class PaperMetricRecorder:
         self.geo_interact_success = False
         self._last_motion_pelvis_target_contact = False
         self.collision = CollisionTracker(self.config)
-        self.disturbance = DisturbanceTracker()
+        self.disturbance = DisturbanceTracker(
+            escape_drop_threshold_m=float(
+                self.config.get("disturbance_escape_drop_m", 5.0)
+            )
+        )
         self.usage = UsageTracker()
 
     def record_reset(self) -> None:
@@ -334,6 +338,14 @@ def aggregate_metric_files(
             ),
             "disturbed_object_path_length_mean_m": (
                 path_length_sum / mapped_objects if mapped_objects else None
+            ),
+            "escaped_affected_objects_total": sum(
+                int(row.get("escaped_affected_dynamic_object_count") or 0)
+                for row in body_rows
+            ),
+            "scene_escaped_objects_total": sum(
+                int(row.get("scene_escaped_dynamic_object_count") or 0)
+                for row in body_rows
             ),
         },
         "action_quality": {

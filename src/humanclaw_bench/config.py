@@ -81,6 +81,7 @@ def load_config(profile_or_path: str | Path = "paper_fullval_v1") -> ReleaseConf
         "collision_contact_source",
         "fixed_contact_min_height_m",
         "initial_penetration_threshold_m",
+        "disturbance_escape_drop_m",
         "jerk_neutral_body22",
         "jerk_smooth_window",
         "jerk_stride",
@@ -96,6 +97,15 @@ def load_config(profile_or_path: str | Path = "paper_fullval_v1") -> ReleaseConf
     if metrics.get("collision_contact_source") != "post_physics_30hz":
         raise ValueError(
             "metrics.collision_contact_source must be 'post_physics_30hz'"
+        )
+    escape_drop = metrics.get("disturbance_escape_drop_m")
+    if (
+        isinstance(escape_drop, bool)
+        or not isinstance(escape_drop, (int, float))
+        or escape_drop <= 0
+    ):
+        raise ValueError(
+            "metrics.disturbance_escape_drop_m must be a positive number of metres"
         )
     neutral_resource = metrics.get("jerk_neutral_body22")
     if not isinstance(neutral_resource, str) or not neutral_resource:

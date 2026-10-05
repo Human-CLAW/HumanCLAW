@@ -75,6 +75,7 @@
     "collision_contact_source": "post_physics_30hz",
     "fixed_contact_min_height_m": 0.0205,
     "initial_penetration_threshold_m": 0.01,
+    "disturbance_escape_drop_m": 5.0,
     "floor_ray_max_distance_m": 100.0,
     "floor_select_epsilon_m": 0.05,
     "jerk_neutral_body22": "resources/metrics/smpl_neutral_body22.json",

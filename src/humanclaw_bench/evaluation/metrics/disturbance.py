@@ -43,12 +43,23 @@ def _decoded_names(values: Any) -> list[str]:
 class DisturbanceTracker:
     """Track the affected-object graph while an episode is running."""
 
-    def __init__(self) -> None:
-        """Capture initial dynamic-object poses used as disturbance references."""
+    def __init__(self, escape_drop_threshold_m: float = 5.0) -> None:
+        """Capture initial dynamic-object poses used as disturbance references.
+
+        ``escape_drop_threshold_m`` is the depth below its own initial height
+        at which an affected object is considered to have left the scene.  A
+        thin floor-level object such as a mat or a stepping stone can, in rare
+        cases, pass through the static scene geometry under the humanoid's
+        feet and then fall freely for the rest of the episode.  From that
+        point its motion no longer describes a disturbance of the scene, so
+        the object is not counted.  Five metres is deeper than any drop inside
+        an HSSD house, so ordinary falls are unaffected.
+        """
 
         self._affected: dict[str, dict[str, Any]] = {}
         self._direct: set[str] = set()
         self._next_absolute_frame = 0
+        self.escape_drop_threshold_m = float(escape_drop_threshold_m)
 
     def _mark(self, name: str, step: int, frame: int, source: str) -> None:
         """Record one object's displacement state at a realized physics frame."""
@@ -129,37 +140,86 @@ class DisturbanceTracker:
             return 0.0
         return float(np.linalg.norm(np.diff(segment, axis=0), axis=1).sum())
 
+    @staticmethod
+    def _vertical_drop(positions: Any) -> float | None:
+        """Largest descent below the object's first finite recorded height (Z-up)."""
+
+        xyz = np.asarray(positions, dtype=np.float64)
+        if xyz.ndim != 2 or xyz.shape[1] < 3 or xyz.shape[0] == 0:
+            return None
+        z = xyz[:, 2]
+        z = z[np.isfinite(z)]
+        if z.size == 0:
+            return None
+        return float(z[0] - z.min())
+
     def finalize(self, after: dict[str, Any]) -> dict[str, Any]:
-        """Map affected handles to trajectories and compute their path length."""
+        """Map affected handles to trajectories and compute their path length.
+
+        Affected objects that left the scene (see ``escape_drop_threshold_m``)
+        are not counted.  They are listed separately, as is every counted
+        object with its own path length, so the aggregate stays reproducible
+        from the per-episode record.
+        """
 
         names = _decoded_names(after.get("object_names", []))
         indices = {name: index for index, name in enumerate(names)}
-        path_lengths: list[float] = []
-        for name, info in self._affected.items():
-            index = indices.get(name)
-            if index is None:
-                continue
+
+        # Record every dynamic object that left the scene during the episode,
+        # touched or not.  This list is informational and never enters the
+        # metric.
+        scene_escaped: list[str] = []
+        for index, name in enumerate(names):
             key = f"object_{index:03d}_position"
             if key not in after:
                 continue
-            length = self._path_length(after[key], int(info["first_affected_frame"]))
+            drop = self._vertical_drop(after[key])
+            if drop is not None and drop > self.escape_drop_threshold_m:
+                scene_escaped.append(name)
+
+        kept: list[dict[str, Any]] = []
+        escaped: list[dict[str, Any]] = []
+        path_lengths: list[float] = []
+        for name, info in self._affected.items():
+            record = {
+                "name": name,
+                "source": str(info["source"]),
+                "first_affected_step": int(info["first_affected_step"]),
+            }
+            index = indices.get(name)
+            key = f"object_{index:03d}_position" if index is not None else None
+            if key is None or key not in after:
+                kept.append({**record, "path_length_m": None})
+                continue
+            positions = after[key]
+            drop = self._vertical_drop(positions)
+            if drop is not None and drop > self.escape_drop_threshold_m:
+                escaped.append({**record, "drop_m": drop})
+                continue
+            length = self._path_length(positions, int(info["first_affected_frame"]))
             if length is not None:
                 path_lengths.append(length)
+            kept.append({**record, "path_length_m": length})
 
-        affected_count = len(self._affected)
+        kept_names = {item["name"] for item in kept}
+        direct_names = self._direct & kept_names
         mapped_count = len(path_lengths)
         path_sum = float(sum(path_lengths))
         return {
-            "affected_dynamic_object_count": int(affected_count),
-            "direct_dynamic_object_count": int(len(self._direct)),
-            "indirect_dynamic_object_count": int(
-                len(set(self._affected) - self._direct)
-            ),
+            "affected_dynamic_object_count": int(len(kept_names)),
+            "direct_dynamic_object_count": int(len(direct_names)),
+            "indirect_dynamic_object_count": int(len(kept_names - direct_names)),
             "mapped_affected_dynamic_object_count": int(mapped_count),
             "affected_object_path_length_sum_m": path_sum,
             "affected_object_path_length_mean_m": (
                 path_sum / mapped_count if mapped_count else None
             ),
+            "affected_dynamic_objects": kept,
+            "escape_drop_threshold_m": self.escape_drop_threshold_m,
+            "escaped_affected_dynamic_object_count": int(len(escaped)),
+            "escaped_affected_dynamic_objects": escaped,
+            "scene_escaped_dynamic_object_count": int(len(scene_escaped)),
+            "scene_escaped_dynamic_objects": scene_escaped,
         }
 
 

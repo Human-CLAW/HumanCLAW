@@ -99,6 +99,78 @@ def test_disturbance_propagates_on_same_or_later_frames_only():
     assert result["indirect_dynamic_object_count"] == 1
     assert result["affected_dynamic_object_count"] == 2
     assert result["affected_object_path_length_sum_m"] == pytest.approx(4.0)
+    assert result["escaped_affected_dynamic_object_count"] == 0
+
+
+def test_disturbance_excludes_objects_that_escape_the_scene():
+    tracker = DisturbanceTracker()
+    tracker.record_step(
+        0,
+        {
+            "agent_contacts": [
+                [{"other": _dynamic("mat")}, {"other": _dynamic("rug")}]
+            ],
+            "dynamic_contacts": [[]],
+        },
+    )
+    frames = 15
+    mat = np.zeros((frames, 3))
+    mat[:, 2] = np.linspace(0.02, -800.0, frames)  # stepped on, left the scene
+    rug = np.zeros((frames, 3))
+    rug[:, 0] = np.linspace(0.0, 0.4, frames)  # pushed 0.4 m along the floor
+    rug[:, 2] = 0.01
+    slab = np.zeros((frames, 3))
+    slab[:, 2] = np.linspace(0.03, -600.0, frames)  # left the scene untouched
+    result = tracker.finalize(
+        {
+            "object_names": np.asarray(["mat", "rug", "slab"]),
+            "object_000_position": mat,
+            "object_001_position": rug,
+            "object_002_position": slab,
+        }
+    )
+    assert result["escaped_affected_dynamic_object_count"] == 1
+    assert result["escaped_affected_dynamic_objects"][0]["name"] == "mat"
+    assert result["escaped_affected_dynamic_objects"][0]["drop_m"] > 5.0
+    assert result["affected_dynamic_object_count"] == 1
+    assert result["direct_dynamic_object_count"] == 1
+    assert result["indirect_dynamic_object_count"] == 0
+    assert result["mapped_affected_dynamic_object_count"] == 1
+    assert result["affected_object_path_length_sum_m"] == pytest.approx(0.4)
+    assert result["affected_dynamic_objects"] == [
+        {
+            "name": "rug",
+            "source": "direct",
+            "first_affected_step": 0,
+            "path_length_m": pytest.approx(0.4),
+        }
+    ]
+    assert set(result["scene_escaped_dynamic_objects"]) == {"mat", "slab"}
+    assert result["scene_escaped_dynamic_object_count"] == 2
+
+
+@pytest.mark.parametrize(
+    ("drop", "threshold", "kept"),
+    [(3.5, 5.0, True), (5.0, 5.0, True), (5.01, 5.0, False), (2.0, 1.0, False)],
+)
+def test_disturbance_escape_threshold_is_strict_and_configurable(
+    drop, threshold, kept
+):
+    tracker = DisturbanceTracker(escape_drop_threshold_m=threshold)
+    tracker.record_step(
+        0, {"agent_contacts": [[{"other": _dynamic("vase")}]], "dynamic_contacts": [[]]}
+    )
+    result = tracker.finalize(
+        {
+            "object_names": np.asarray(["vase"]),
+            "object_000_position": np.asarray(
+                [[0.0, 0.0, 1.0], [0.0, 0.0, 1.0 - drop]]
+            ),
+        }
+    )
+    assert result["escape_drop_threshold_m"] == threshold
+    assert result["mapped_affected_dynamic_object_count"] == (1 if kept else 0)
+    assert result["escaped_affected_dynamic_object_count"] == (0 if kept else 1)
 
 
 def test_geo_interact_uses_the_landed_final_frame_of_a_sit_action(monkeypatch):
@@ -398,7 +470,22 @@ def test_batch_aggregation_uses_all_physics_episodes(tmp_path):
     assert result["high_level_success_percent"]["interact_sr"] == 100.0
     assert result["body_scene"]["collision_step_percent"] == 25.0
     assert result["body_scene"]["disturbed_object_path_length_mean_m"] == 1.5
+    assert result["body_scene"]["escaped_affected_objects_total"] == 0
     assert (tmp_path / "metrics_summary.json").is_file()
+
+
+def test_batch_aggregation_reports_escaped_object_totals(tmp_path):
+    escaped = _metric_row(0, interact=True)
+    escaped["body_scene"]["escaped_affected_dynamic_object_count"] = 2
+    escaped["body_scene"]["scene_escaped_dynamic_object_count"] = 3
+    for index, row in enumerate([escaped, _metric_row(1)]):
+        directory = tmp_path / f"run_{index}"
+        directory.mkdir()
+        (directory / "metrics.json").write_text(json.dumps(row))
+    result = aggregate_metric_files(tmp_path, write_summary=False)
+    assert result["body_scene"]["escaped_affected_objects_total"] == 2
+    assert result["body_scene"]["scene_escaped_objects_total"] == 3
+    assert "Escaped" not in format_metric_summary(result)
 
 
 def test_read_only_aggregation_formats_every_paper_table(tmp_path):
