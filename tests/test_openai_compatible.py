@@ -10,6 +10,30 @@ from humanclaw_bench.vlm.factory import build_model
 from humanclaw_bench.vlm.openai_compatible import OpenAICompatibleModel
 
 
+def test_openai_adapter_preserves_temporal_image_order(monkeypatch, tmp_path):
+    monkeypatch.setattr(openai, "OpenAI", _FakeClient)
+    model = OpenAICompatibleModel(model="test", output_dir=tmp_path, api_key="test-key")
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "before action 0"},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": "data:image/png;base64,before"},
+                },
+                {"type": "text", "text": "after action 0"},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": "data:image/png;base64,after"},
+                },
+            ],
+        }
+    ]
+    model.respond(messages)
+    assert model.client.chat.completions.request["messages"] == messages
+
+
 class _FakeCompletions:
     def __init__(self) -> None:
         self.request = None

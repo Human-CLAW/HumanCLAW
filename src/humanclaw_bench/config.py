@@ -9,6 +9,7 @@ from typing import Any
 
 from .paths import repository_root, resolve_release_path
 
+DEFAULT_PROFILE = "feedback_v1"
 # A release profile is a complete experiment definition, not an inheritance
 # fragment.  Model credentials remain external, but every benchmark/runtime
 # policy—including optional metric thresholds—is present in this one file.
@@ -53,7 +54,7 @@ class ReleaseConfig:
         return resolve_release_path(value)
 
 
-def load_config(profile_or_path: str | Path = "paper_fullval_v1") -> ReleaseConfig:
+def load_config(profile_or_path: str | Path = DEFAULT_PROFILE) -> ReleaseConfig:
     """Load and validate one complete, non-inheriting release profile."""
 
     candidate = Path(profile_or_path)
@@ -95,9 +96,7 @@ def load_config(profile_or_path: str | Path = "paper_fullval_v1") -> ReleaseConf
             + ", ".join(missing_metrics)
         )
     if metrics.get("collision_contact_source") != "post_physics_30hz":
-        raise ValueError(
-            "metrics.collision_contact_source must be 'post_physics_30hz'"
-        )
+        raise ValueError("metrics.collision_contact_source must be 'post_physics_30hz'")
     escape_drop = metrics.get("disturbance_escape_drop_m")
     if (
         isinstance(escape_drop, bool)

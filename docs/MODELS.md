@@ -2,9 +2,11 @@
 
 # Model invocation contract
 
-All rollout backbones use temperature 0, planner prompt v4, verifier v3,
+All backbones in the paper profile use temperature 0, planner prompt v4, verifier v3,
 instruction v1, a six-step planning horizon, and a 100-environment-step cap.
 `max_tokens` remains model-specific.
+
+The default `feedback_v1` uses planner v5 and verifier v4. The planner sees one image initially and two ordered decision images thereafter; the verifier sees the current image and state summary. Both adapters preserve multiple image parts; external endpoints and queue workers must also support them. The extra state fields use the configured output budget; `max_tokens` is never silently changed.
 
 | Model | Historical backend | `max_tokens` | Reasoning budget | JSON request |
 |---|---:|---:|---:|---:|

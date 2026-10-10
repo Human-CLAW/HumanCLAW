@@ -7,7 +7,7 @@ import json
 import sys
 
 from .assets import verify_bundled_assets, verify_weights
-from .config import load_config
+from .config import DEFAULT_PROFILE, load_config
 
 
 def _print_json(value) -> None:
@@ -37,7 +37,7 @@ def _build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
 
     config = commands.add_parser("config", help="show a release profile")
-    config.add_argument("profile", nargs="?", default="paper_fullval_v1")
+    config.add_argument("profile", nargs="?", default=DEFAULT_PROFILE)
 
     assets = commands.add_parser("assets", help="verify bundled assets and weights")
     assets.add_argument("--weights-root", default=None)
@@ -70,7 +70,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "run",
         help="evaluate one episode, val100, fullval, or a custom episode list",
     )
-    run.add_argument("--profile", default="paper_fullval_v1")
+    run.add_argument("--profile", default=DEFAULT_PROFILE)
     run.add_argument("--model-config", required=True)
     run.add_argument(
         "--episodes",
@@ -114,7 +114,7 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_agent_asset_argument(run)
 
     rollout = commands.add_parser("rollout", help="run one episode")
-    rollout.add_argument("--profile", default="paper_fullval_v1")
+    rollout.add_argument("--profile", default=DEFAULT_PROFILE)
     rollout.add_argument("--model-config", required=True)
     rollout.add_argument("--scene-id", required=True)
     rollout.add_argument("--episode-id", default=None)
@@ -147,7 +147,7 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_agent_asset_argument(rollout)
 
     batch = commands.add_parser("batch", help="run an episode slice in parallel")
-    batch.add_argument("--profile", default="paper_fullval_v1")
+    batch.add_argument("--profile", default=DEFAULT_PROFILE)
     batch.add_argument("--model-config", required=True)
     batch.add_argument("--output-root", required=True)
     batch.add_argument("--max-parallel", type=int, default=1)

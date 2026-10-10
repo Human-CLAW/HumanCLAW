@@ -352,6 +352,50 @@ under `<queue_dir>/pending/<call_id>/`; the worker returns
 Request images and queue JSON are transport files, not rollout artifacts. They
 are removed after a response is consumed.
 
+## Per-step state feedback (default)
+
+Commands without `--profile` now select `feedback_v1`: planner v5 and verifier
+v4. Use `--profile paper_fullval_v1` to reproduce the original single-image
+v4/v3 baseline. Both profiles are complete, independent experiment definitions;
+use separate output directories when comparing them.
+
+At decision t, the planner receives the current realized root pose, the 21
+named core SMPL-X joint rotations, the image before action t-1 and the current
+image, and the last 10 compact action records. The first decision has only its
+current image. Root displacement, turn angle, height change and joint motion
+are measured after physics; requested motion and generated motion are recorded
+separately. Full 54-joint poses remain in the replay trajectory. Target geometry,
+semantic labels and metric results are excluded from agent inputs.
+
+The same planner call emits `state_estimate` and the next `action_intent`:
+
+| Field | Meaning |
+|---|---|
+| `progress` | Whether the executed action achieved its expected motion, and whether the task advanced; these are separate judgments. |
+| `anomalies` | Suspected blockage, overshoot and target loss, each with short evidence and low/medium/high confidence. |
+| `body_target_relation` | Visual direction, coarse distance and facing, with current-view versus historical provenance and last-seen memory. |
+| `recovery` | The last actual recovery attempt and whether its intended problem improved, remains pending or is uncertain. |
+| `action_intent` | Observable expected effect and recovery purpose of the action that will execute. |
+
+The verifier receives the current image and compact feedback. If it replaces
+an action, its final action and intent become the next step's memory. Unknown
+or malformed estimates remain unknown without another model call. The two
+images and recovery memory reset between episodes; retries keep the same image
+pair. The endpoint or filesystem queue worker must support two images in a
+planner request. Verifier routing and the number of logical calls are unchanged.
+
+Per-step planner JSON retains `prompt` and `response`, and adds `feedback` with
+the normalized state, final intent and post-execution measurements. The final
+action is measured even when there is no subsequent planning call. The replay
+manifest records the effective versions and profile digest. Resume and rerun
+reject conflicting or unidentifiable prior output before skipping or deleting
+it. Historical paper manifests remain usable with the unchanged paper profile.
+
+For a bounded comparison, run the same episode and model configuration twice,
+using `--profile feedback_v1` and `--profile paper_fullval_v1`, distinct
+`--output-root` directories, and `rollout --max-steps 10`. Compare requested,
+generated and actual motion in the feedback logs before assessing task success.
+
 ## Run one episode
 
 ```bash
@@ -366,7 +410,7 @@ humanclaw-bench run \
   --output outputs/example
 ```
 
-The planner uses prompt v4 and the verifier uses verifier v3. The selected
+The explicit paper profile above uses planner v4 and verifier v3. The selected
 motion action is always the verifier-final action. Stop ends the episode;
 otherwise the rollout ends at 100 environment steps.
 

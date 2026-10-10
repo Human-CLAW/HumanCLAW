@@ -311,6 +311,45 @@ reasoning effort；credential 不会写进 model JSON。
 Request image 和 queue JSON 是 transport file，不是 rollout artifact；读取
 response 后会被删除。
 
+## 每步状态反馈（默认）
+
+未指定 `--profile` 的命令现在使用 `feedback_v1`：planner v5 与 verifier
+v4。使用 `--profile paper_fullval_v1` 可复现原始单图 v4/v3 基线。两个
+profile 都是完整、独立的实验定义；对照实验应使用不同输出目录。
+
+在决策 t，planner 接收当前物理执行后的根部位姿、21 个具名 SMPL-X 核心
+身体关节旋转、动作 t-1 前的画面与当前画面，以及最近 10 步的紧凑动作记录。
+首步只有当前图像。位移、转角、高度变化和关节变化来自物理执行后的实际
+状态；请求参数与生成运动分别记录。完整 54 关节仍保存在 replay 轨迹中。
+目标几何真值、语义标签和评测结果不会进入 agent 输入。
+
+同一次 planner 调用输出 `state_estimate` 和下一动作的 `action_intent`：
+
+| 字段 | 含义 |
+|---|---|
+| `progress` | 分别判断动作预期运动是否实现、任务是否推进，允许部分实现、退步和未知。 |
+| `anomalies` | 疑似卡住、走过头和丢失目标，分别附带短证据与高／中／低置信度。 |
+| `body_target_relation` | 视觉方向、粗略距离、身体朝向，区分当前观察与历史推测，并保留最近见到目标的记忆。 |
+| `recovery` | 最近实际执行的恢复尝试及其效果，允许待观察和无法判断。 |
+| `action_intent` | 最终将执行动作的可观察预期效果及恢复目的。 |
+
+Verifier 接收当前画面和紧凑反馈。如果它替换动作，下一步记住的是最终动作
+及其意图。缺失或格式错误的估计降级为未知，不增加模型调用。双帧缓存与
+恢复记忆在 episode reset 时清空，重试保持同一对图像。服务端或 filesystem
+queue worker 需要支持每次 planner 请求包含两张图像。Verifier 的调用路由
+和逻辑调用次数保持一致。
+
+每步 planner JSON 保留 `prompt`、`response`，并增加 `feedback`，保存规范化
+状态、最终意图和执行后实测结果。最后动作即使没有下一次规划也会记录实测
+结果。Replay manifest 记录有效版本与 profile 摘要；resume 和重跑会在跳过或
+清理旧结果前拒绝配置冲突或身份不明的输出。历史 paper manifest 仍可与原始
+paper profile 一起使用。
+
+短对照实验可使用相同 episode 和模型配置，分别指定 `--profile feedback_v1`
+与 `--profile paper_fullval_v1`、独立 `--output-root`，并用
+`rollout --max-steps 10` 限制步数。先对照日志中的请求、生成与实际运动，再
+判断任务完成情况。
+
 ## 运行一个 episode
 
 ```bash
@@ -325,7 +364,7 @@ humanclaw-bench run \
   --output outputs/example
 ```
 
-Planner 使用 prompt v4，verifier 使用 verifier v3。最终执行的 motion action
+上述显式 paper profile 使用 planner v4 和 verifier v3。最终执行的 motion action
 始终是 verifier-final action。Stop 会结束 episode；否则 rollout 最多运行
 100 个 environment step。
 

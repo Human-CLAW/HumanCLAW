@@ -5,6 +5,9 @@ import threading
 import time
 from pathlib import Path
 
+from PIL import Image
+
+from humanclaw_bench.agent.utils import image_to_data_url
 from humanclaw_bench.vlm.filesystem_queue import FilesystemQueueModel
 
 
@@ -53,3 +56,29 @@ def test_response_waits_for_json_body_after_filename_is_visible(tmp_path: Path) 
     assert model.call_index == 1
     assert not any((queue_dir / "done").iterdir())
 
+
+def test_queue_preserves_labeled_before_after_images_in_order(tmp_path):
+    model = _model(tmp_path)
+    content = []
+    for label, color in (("before action 0", "red"), ("after action 0", "blue")):
+        content.extend(
+            [
+                {"type": "text", "text": label},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": image_to_data_url(Image.new("RGB", (2, 2), color))
+                    },
+                },
+            ]
+        )
+    call_id = model._write_request([{"role": "user", "content": content}])
+    request_dir = tmp_path / "pending" / call_id
+    stored = json.loads((request_dir / "request.json").read_text())
+    parts = stored["messages"][0]["content"]
+    assert [parts[i]["text"] for i in (0, 2)] == ["before action 0", "after action 0"]
+    for index, expected in ((1, (255, 0, 0)), (3, (0, 0, 255))):
+        with Image.open(
+            request_dir / parts[index]["image_url"]["stored_image_file"]
+        ) as frame:
+            assert frame.getpixel((0, 0)) == expected

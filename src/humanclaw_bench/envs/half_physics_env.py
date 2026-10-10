@@ -93,9 +93,28 @@ class RuntimeModules:
 
 @dataclass(frozen=True)
 class HalfPhysicsObservation:
-    """Observation returned by HalfPhysicsEnv."""
+    """Pair a decision image with optional realized own-body proprioception.
+
+    The snapshot uses HalfPhysics Z-up trajectory root coordinates (metres
+    and axis-angle radians), plus 54 parent-local SMPL-X joint rotations.
+    Agent feedback converts the root to Y-up and selects the 21 core joints.
+    """
 
     head_rgb: np.ndarray
+    proprioception: dict[str, Any] | None = None
+
+
+def _proprioception_snapshot(
+    transl: np.ndarray, global_orient: np.ndarray, body_pose: np.ndarray
+) -> dict[str, Any]:
+    """Copy the realized own-body pose paired with one decision image."""
+
+    return {
+        "coordinate_frame": "half_physics_z_up",
+        "transl": np.array(transl, copy=True),
+        "global_orient": np.array(global_orient, copy=True),
+        "body_pose": np.array(body_pose, copy=True),
+    }
 
 
 @dataclass(frozen=True)
@@ -664,7 +683,10 @@ class HalfPhysicsEnv:
         )
         self._current_step = 0
         self._reset = True
-        self._last_obs = HalfPhysicsObservation(head_rgb=_as_rgb_array(obs["ego_rgb"]))
+        self._last_obs = HalfPhysicsObservation(
+            head_rgb=_as_rgb_array(obs["ego_rgb"]),
+            proprioception=_proprioception_snapshot(*self._read_agent_state()),
+        )
         self._last_semantic = (
             np.asarray(obs["ego_semantic"]) if "ego_semantic" in obs else None
         )
@@ -727,7 +749,15 @@ class HalfPhysicsEnv:
         )
 
         ego_rgb = _as_rgb_array(result["ego_rgb"][-1])
-        obs = HalfPhysicsObservation(head_rgb=ego_rgb)
+        body_state = result["body_state"]
+        obs = HalfPhysicsObservation(
+            head_rgb=ego_rgb,
+            proprioception=_proprioception_snapshot(
+                body_state["transl"][-1],
+                body_state["global_orient"][-1],
+                body_state["body_pose"][-1],
+            ),
+        )
         self._last_obs = obs
         self._last_semantic = result.get("ego_semantic")
         self._last_third_person_rgb = result.get("third_person_rgb")

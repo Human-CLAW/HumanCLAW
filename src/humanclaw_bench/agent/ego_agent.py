@@ -18,10 +18,11 @@ class PSVEgoAgent(EgoAgent):
         self,
         model: VLM,
         *,
-        prompt_version: str = "v4",
-        verifier_version: str = "v3",
+        prompt_version: str = "v5",
+        verifier_version: str = "v4",
         max_history: int = 10,
         plan_horizon_steps: int = 6,
+        use_feedback: bool = True,
     ) -> None:
         """Create the versioned planner used by the evaluation."""
 
@@ -33,7 +34,14 @@ class PSVEgoAgent(EgoAgent):
             verifier_version=verifier_version,
             max_history=max_history,
             plan_horizon_steps=plan_horizon_steps,
+            use_feedback=use_feedback,
         )
+
+    @property
+    def feedback_enabled(self) -> bool:
+        """Expose whether the selected planner consumes proprioceptive feedback."""
+
+        return self._planner.feedback_enabled
 
     def reset(self, task: Any) -> None:
         """Clear planner history and bind the agent to a new episode task."""

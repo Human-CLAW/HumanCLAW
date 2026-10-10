@@ -2,9 +2,11 @@
 
 # 模型调用约定
 
-所有 rollout backbone 都使用 temperature 0、planner prompt v4、verifier
+原论文 profile 的所有 rollout backbone 都使用 temperature 0、planner prompt v4、verifier
 v3、instruction v1、六步 planning horizon，以及最多 100 个 environment
 step。`max_tokens` 由模型分别设置。
+
+默认 `feedback_v1` 使用 planner v5、verifier v4。Planner 首步输入一张图，后续输入动作前后两帧；verifier 输入当前图像及状态摘要。两种 adapter 都保留多图顺序；外部服务或 queue worker 也必须支持多图。额外状态字段使用已有模型输出预算，代码不会自动修改 `max_tokens`。
 
 | 模型 | 历史 backend | `max_tokens` | Reasoning budget | JSON request |
 |---|---:|---:|---:|---:|

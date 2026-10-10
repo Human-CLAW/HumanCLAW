@@ -8,6 +8,12 @@ from typing import Any
 
 from PIL import Image
 
+from humanclaw_bench.agent.feedback import (
+    current_feedback,
+    normalize_action_intent,
+    normalize_state_estimate,
+    recovery_record,
+)
 from humanclaw_bench.agent.prompts import resolve_prompt_version
 from humanclaw_bench.agent.skills import SkillCall, skill_to_text
 from humanclaw_bench.agent.types import (
@@ -32,7 +38,7 @@ class HumanClawBenchPSVPlanSkillPlanner:
     """Two-stage HumanClaw plan-and-skill planner.
 
     Stage 1 chooses a mid-level goal and a proposed low-level action. Stage 2
-    applies the v3 route selected for Walk, Stop/Stand, Climb upstairs, or the
+    applies the versioned route selected for Walk, Stop/Stand, Climb upstairs, or the
     two sitting transitions, using the same current ego image.
     """
 
@@ -40,8 +46,8 @@ class HumanClawBenchPSVPlanSkillPlanner:
         self,
         model: VLM,
         *,
-        prompt_version: str = "v4",
-        verifier_version: str = "v3",
+        prompt_version: str = "v5",
+        verifier_version: str = "v4",
         max_history: int = 10,
         use_feedback: bool = True,
         plan_horizon_steps: int = PLAN_HORIZON_STEPS,
@@ -51,15 +57,22 @@ class HumanClawBenchPSVPlanSkillPlanner:
         self.model = model
         self.prompts = resolve_prompt_version(prompt_version)
         self.verifier = resolve_verifier_version(verifier_version)
-        self.prompt_version = str(prompt_version or "v4")
+        self.prompt_version = str(prompt_version or "v5")
         self.verifier_version = str(getattr(self.verifier, "VERSION", verifier_version))
         self.max_history = max(int(max_history or 0), 10)
         self.use_feedback = use_feedback
+        self.feedback_enabled = bool(
+            use_feedback and getattr(self.prompts, "USES_FEEDBACK", False)
+        )
         self.plan_horizon_steps = int(plan_horizon_steps)
         self.task: Any | None = None
         self.current_plan: str | None = None
         self.current_step = 0
         self.turn_for_sit_sequence_verified = False
+        self._frame_cache: dict[int, str] = {}
+        self._observation_step = 0
+        self._state_estimate: dict[str, Any] = {}
+        self._last_recovery: dict[str, Any] | None = None
 
     def reset(self, task: Any) -> None:
         """Clear plans, counters, and sitting-transition state for a new task."""
@@ -68,6 +81,10 @@ class HumanClawBenchPSVPlanSkillPlanner:
         self.current_plan = None
         self.current_step = 0
         self.turn_for_sit_sequence_verified = False
+        self._frame_cache.clear()
+        self._observation_step = 0
+        self._state_estimate = {}
+        self._last_recovery = None
 
     def _data_url(self, image: Image.Image | str) -> str:
         """Convert a PIL image or image path into the VLM adapter's data-URL format."""
@@ -76,9 +93,43 @@ class HumanClawBenchPSVPlanSkillPlanner:
             return image_path_to_data_url(image)
         return image_to_data_url(image)
 
-    def _message(self, image: Image.Image | str, prompt: str) -> dict[str, Any]:
-        """Build one multimodal user message containing the prompt and current ego image."""
+    def _message(
+        self, image: Image.Image | str, prompt: str, *, include_previous: bool = False
+    ) -> dict[str, Any]:
+        """Attach the current frame and, for feedback planning, its labeled predecessor."""
 
+        if self.feedback_enabled:
+            step = self._observation_step
+            current_image_url = self._frame_cache.get(step)
+            if current_image_url is None:
+                current_image_url = self._data_url(image)
+            content: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
+            if include_previous and step - 1 in self._frame_cache:
+                content.extend(
+                    [
+                        {
+                            "type": "text",
+                            "text": f"Previous decision image: observation step {step - 1}, BEFORE action step {step - 1}.",
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": self._frame_cache[step - 1]},
+                        },
+                    ]
+                )
+            content.extend(
+                [
+                    {
+                        "type": "text",
+                        "text": f"Current decision image: observation step {step}.",
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": current_image_url},
+                    },
+                ]
+            )
+            return {"role": "user", "content": content}
         return {
             "role": "user",
             "content": [
@@ -96,7 +147,9 @@ class HumanClawBenchPSVPlanSkillPlanner:
     ) -> PSVStageOutput:
         """Call the VLM once and preserve raw text, parsed JSON, usage, and parse errors."""
 
-        messages = [self._message(image, prompt)]
+        messages = [
+            self._message(image, prompt, include_previous=stage == "percept_mid_low")
+        ]
         try:
             raw_output = self.model.respond(messages)
         except Exception as exc:  # noqa: BLE001
@@ -362,6 +415,8 @@ class HumanClawBenchPSVPlanSkillPlanner:
     ) -> list[dict[str, Any]]:
         """Collect bounded prior planner outputs used as temporal context."""
 
+        if self.feedback_enabled:
+            return self._feedback_history(history)
         rows: list[dict[str, Any]] = []
         for item in history[-self.max_history :]:
             # Feed back only the semantic fields that help the next decision.
@@ -401,6 +456,46 @@ class HumanClawBenchPSVPlanSkillPlanner:
             rows.append(row)
         return rows
 
+    def _feedback_history(self, history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Retain executed actions and compact outcomes, excluding raw body arrays."""
+
+        rows = []
+        for item in history[-self.max_history :]:
+            plan = self._previous_plan_skill_output(item)
+            action = item.get("action") or {}
+            intent = item.get("action_intent") or {}
+            assessment = item.get("assessment") or {}
+            transition = item.get("execution_feedback") or {}
+            row = {
+                "action_step": item.get("step"),
+                "executed_action": clip_text(
+                    item.get("action_text")
+                    or action.get("action_name")
+                    or action.get("skill"),
+                    80,
+                ),
+                "mid_level_goal": clip_text(plan.get("mid_level_goal"), 160),
+                "visible_state": clip_text(plan.get("visible_state"), 180),
+                "expected_effect": clip_text(
+                    intent.get("expected_effect", "unknown"), 200
+                ),
+                "recovery_for": intent.get("recovery_for", "none"),
+                "actual_motion": transition.get("actual_motion", {"available": False}),
+                "assessment": {
+                    "evaluated_action_step": assessment.get("evaluated_action_step"),
+                    "progress": assessment.get("progress", {}),
+                    "anomalies": {
+                        name: value.get("status", "unknown")
+                        for name, value in assessment.get("anomalies", {}).items()
+                    },
+                },
+            }
+            rejection = self._previous_verifier_rejection_summary(item)
+            if rejection:
+                row["verifier_rejection"] = clip_text(rejection, 200)
+            rows.append(row)
+        return rows
+
     def _plan_skill_prompt(
         self,
         history: list[dict[str, Any]],
@@ -408,7 +503,6 @@ class HumanClawBenchPSVPlanSkillPlanner:
     ) -> str:
         """Assemble the versioned planner prompt from task, history, and feedback."""
 
-        del env_feedback
         if self.task is None:
             raise RuntimeError("Call reset(task) before act().")
         input_obj = {
@@ -417,6 +511,18 @@ class HumanClawBenchPSVPlanSkillPlanner:
             "current_step": len(history),
             "history": self._plan_skill_history(history),
         }
+        if self.feedback_enabled:
+            input_obj.update(
+                {
+                    "feedback": current_feedback(env_feedback, len(history)),
+                    "previous_ego_view_image": {
+                        "step": len(history) - 1 if history else None,
+                        "attached": len(history) - 1 in self._frame_cache,
+                    },
+                    "previous_state_estimate": self._state_estimate,
+                    "last_recovery": self._last_recovery,
+                }
+            )
         return self.prompts.render(input_obj)
 
     @staticmethod
@@ -600,6 +706,17 @@ class HumanClawBenchPSVPlanSkillPlanner:
         )
         if additional_info:
             input_obj["additional_info"] = additional_info
+        if self.feedback_enabled and getattr(self.verifier, "USES_FEEDBACK", False):
+            input_obj.update(
+                {
+                    "feedback": current_feedback(
+                        env_feedback, len(history), include_joints=False
+                    ),
+                    "state_estimate": self._state_estimate,
+                    "action_intent": skiller_plan.get("action_intent", {}),
+                    "mid_level_goal": planner_plan.get("plan", ""),
+                }
+            )
         if proposed_action.skill == "stand" and self._is_additional_info_true(
             additional_info, "stop_after_sit"
         ):
@@ -704,6 +821,16 @@ class HumanClawBenchPSVPlanSkillPlanner:
         if self.task is None:
             raise RuntimeError("Call reset(task) before act().")
 
+        if self.feedback_enabled:
+            self._observation_step = len(history)
+            self._frame_cache = {
+                step: frame
+                for step, frame in self._frame_cache.items()
+                if step in (len(history) - 1, len(history))
+            }
+            if len(history) not in self._frame_cache:
+                self._frame_cache[len(history)] = self._data_url(image)
+
         stage_outputs: list[PSVStageOutput] = []
         if hasattr(self.model, "current_episode_step"):
             self.model.current_episode_step = len(history)
@@ -746,6 +873,18 @@ class HumanClawBenchPSVPlanSkillPlanner:
         planner_plan = self._planner_from_plan_skill(plan_skill_plan)
         skiller_plan = self._skiller_from_plan_skill(plan_skill_plan)
         proposed_action = self._chooser_action(skiller_plan)
+        if self.feedback_enabled:
+            self._state_estimate = normalize_state_estimate(
+                plan_skill_plan.get("state_estimate"),
+                step=len(history),
+                previous=self._state_estimate,
+                recovery_attempt=self._last_recovery,
+            )
+            if self._last_recovery:
+                self._last_recovery = dict(self._state_estimate["recovery"])
+            skiller_plan["action_intent"] = normalize_action_intent(
+                plan_skill_plan.get("action_intent"), proposed_action
+            )
         skiller_plan, scheduler_state = self._gate_turn_for_sit_verifier(
             skiller_plan,
             proposed_action,
@@ -832,12 +971,28 @@ class HumanClawBenchPSVPlanSkillPlanner:
             skiller_plan,
             verifier_plan,
         )
+        action_intent: dict[str, Any] = {}
+        if self.feedback_enabled:
+            # A replacement's intent must never inherit semantics from the
+            # rejected proposal, even when the verifier omitted its new intent.
+            replaced = final_action.to_json() != proposed_action.to_json()
+            action_intent = normalize_action_intent(
+                verifier_plan.get("action_intent")
+                if replaced
+                else skiller_plan.get("action_intent"),
+                final_action,
+            )
+            attempt = recovery_record(len(history), final_action, action_intent)
+            if attempt is not None:
+                self._last_recovery = attempt
         return PlannerResult(
             raw_plan=raw_plan,
             action=final_action,
             planner_skill=plan_skill_plan,
             verifier=verifier_plan,
             stage_outputs=stage_outputs,
+            state_estimate=dict(self._state_estimate) if self.feedback_enabled else {},
+            action_intent=action_intent,
         )
 
 

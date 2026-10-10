@@ -17,6 +17,8 @@ class PlannerResult:
     planner_skill: dict[str, Any]
     verifier: dict[str, Any]
     stage_outputs: list[PSVStageOutput] = field(default_factory=list)
+    state_estimate: dict[str, Any] = field(default_factory=dict)
+    action_intent: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

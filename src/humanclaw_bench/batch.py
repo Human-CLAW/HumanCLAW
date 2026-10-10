@@ -14,6 +14,7 @@ from typing import Any
 from .assets import sha256_file, verify_weights
 from .benchmark.episodes import list_episode_specs
 from .config import ReleaseConfig
+from .evaluation.compatibility import validate_existing_rollout
 from .paths import repository_root, resolve_release_path
 
 
@@ -178,14 +179,13 @@ def _rollout_complete(
     *,
     save_video: bool,
     compute_metrics: bool,
+    profile: ReleaseConfig | None = None,
 ) -> bool:
     """Return whether every requested final artifact exists and is non-empty."""
 
-    rollout = (
-        output_root
-        / _task_name(episode)
-        / "rollout_00"
-    )
+    rollout = output_root / _task_name(episode) / "rollout_00"
+    if profile is not None:
+        validate_existing_rollout(rollout, profile)
     required = [
         rollout / "replay_manifest.json",
         rollout / "trajectory_before.npz",
@@ -261,6 +261,7 @@ def run_batch(config: dict[str, Any]) -> dict[str, Any]:
                 episode,
                 save_video=bool(config.get("save_video", False)),
                 compute_metrics=bool(config.get("compute_metrics", False)),
+                profile=profile,
             )
         ]
         skipped = len(requested) - len(selected)
@@ -304,6 +305,7 @@ def run_batch(config: dict[str, Any]) -> dict[str, Any]:
                 episode,
                 save_video=bool(config.get("save_video", False)),
                 compute_metrics=bool(config.get("compute_metrics", False)),
+                profile=profile,
             ):
                 skipped += 1
                 continue

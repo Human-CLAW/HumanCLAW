@@ -14,6 +14,7 @@ from typing import Any
 
 from PIL import Image
 
+from humanclaw_bench.agent.feedback import build_transition, step_feedback
 from humanclaw_bench.agent.skills import skill_to_text
 from humanclaw_bench.agent.types import PlannerResult
 from humanclaw_bench.assets import resolve_agent_asset
@@ -21,6 +22,10 @@ from humanclaw_bench.benchmark.episodes import HCFindNavInteractEpisode
 from humanclaw_bench.config import ReleaseConfig
 from humanclaw_bench.envs.find_nav_interact_env import HCFindNavInteractEnv
 from humanclaw_bench.envs.half_physics_env import xb75_yup_to_half_physics_pose
+from humanclaw_bench.evaluation.compatibility import (
+    runtime_contract,
+    validate_existing_rollout,
+)
 from humanclaw_bench.evaluation.trajectory import (
     TrajectoryRecorder,
     build_replay_metadata,
@@ -115,6 +120,7 @@ def _write_step_vlm_records(
     output_dir: Path,
     step: int,
     decision: PlannerResult,
+    execution_feedback: dict[str, Any] | None = None,
 ) -> list[Path]:
     """Write one compact record containing each logical stage's final attempt.
 
@@ -152,6 +158,13 @@ def _write_step_vlm_records(
         }
         if stage.error:
             payload["error"] = stage.error
+        if stage_name == "percept_mid_low" and decision.state_estimate:
+            payload["feedback"] = {
+                "state_estimate": decision.state_estimate,
+                "action_intent": decision.action_intent,
+                "executed_action": decision.action.to_json(),
+                "execution_result": execution_feedback,
+            }
         path = output_dir / f"step{step:03d}_{suffix}.json"
         path.write_text(
             json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
@@ -165,7 +178,7 @@ def _history_item(step: int, decision: PlannerResult) -> dict[str, Any]:
     """Keep only the in-memory fields consumed by the next planner call."""
 
     raw_plan = decision.raw_plan
-    return {
+    item = {
         "step": step,
         "action": decision.action.to_json(),
         "action_text": skill_to_text(decision.action),
@@ -176,6 +189,10 @@ def _history_item(step: int, decision: PlannerResult) -> dict[str, Any]:
         "planner_skill": decision.planner_skill,
         "verifier": decision.verifier,
     }
+    if decision.state_estimate:
+        item["state_estimate"] = decision.state_estimate
+        item["action_intent"] = decision.action_intent
+    return item
 
 
 class HCFindNavInteractEvaluator:
@@ -312,6 +329,10 @@ class HCFindNavInteractEvaluator:
             self.output_root = Path(output_override).expanduser().resolve()
         self.output_root.mkdir(parents=True, exist_ok=True)
 
+        for rollout_index in range(int(self.config.get("n_rollouts", 1))):
+            validate_existing_rollout(
+                self.rollout_dir(episode, rollout_index), self.profile
+            )
         model = build_model(self._model_config, self.output_root)
         # Asset/backend keys have explicit constructor arguments below.  Every
         # remaining physics key is a public environment setting, which keeps
@@ -352,6 +373,7 @@ class HCFindNavInteractEvaluator:
             verifier_version=str(agent_config["verifier_version"]),
             max_history=int(agent_config["max_history"]),
             plan_horizon_steps=int(agent_config["plan_horizon_steps"]),
+            use_feedback=bool(agent_config.get("use_feedback", True)),
         )
         self.seed_mode = str(motion_config["seed_mode"])
         self.seed_pkl = (
@@ -419,13 +441,16 @@ class HCFindNavInteractEvaluator:
             if hasattr(self.env, "replay_initial_state")
             else {}
         )
+        metadata = build_replay_metadata(
+            profile_name=self._profile_name(),
+            episode=episode,
+            rollout_index=rollout_index,
+            env=self.env,
+        )
+        if isinstance(self.profile, ReleaseConfig):
+            metadata["runtime_contract"] = runtime_contract(self.profile)
         return TrajectoryRecorder(
-            metadata=build_replay_metadata(
-                profile_name=self._profile_name(),
-                episode=episode,
-                rollout_index=rollout_index,
-                env=self.env,
-            ),
+            metadata=metadata,
             initial_xb_world_75=self._initial_xb_world_75,
             initial_state=initial_state,
         )
@@ -510,16 +535,19 @@ class HCFindNavInteractEvaluator:
         """Execute one closed-loop episode and write only artifacts enabled by mode flags."""
 
         output_dir = self.rollout_dir(episode, rollout_index)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        _clear_generated_rollout_artifacts(output_dir)
-
         history: list[dict[str, Any]] = []
         trajectory: TrajectoryRecorder | None = None
         metric_recorder: Any = None
         video_writer: Any = None
         rollout_succeeded = False
+        feedback_enabled = bool(getattr(self.agent, "feedback_enabled", False))
+        transition: dict[str, Any] | None = None
 
         try:
+            if isinstance(self.profile, ReleaseConfig):
+                validate_existing_rollout(output_dir, self.profile)
+            output_dir.mkdir(parents=True, exist_ok=True)
+            _clear_generated_rollout_artifacts(output_dir)
             if self.save_video:
                 # Creating the exo sensor and ffmpeg pipes is opt-in; a normal
                 # rollout never pays their render or I/O cost.
@@ -530,6 +558,7 @@ class HCFindNavInteractEvaluator:
 
             self.agent.reset(episode)
             observation = self._reset_env_for_rollout(episode)
+            initial_proprioception = getattr(observation, "proprioception", None)
             if video_writer is not None:
                 self.env.emit_initial_video_frame()
             trajectory = self._new_trajectory_recorder(
@@ -550,7 +579,24 @@ class HCFindNavInteractEvaluator:
                 )
                 # Planner/verifier transport and JSON failures are handled
                 # inside the agent at this unchanged simulator state.
-                decision = self.agent.act(ego_image, history, [])
+                before_proprioception = getattr(observation, "proprioception", None)
+                feedback = (
+                    [
+                        step_feedback(
+                            step,
+                            before_proprioception,
+                            initial_proprioception,
+                            transition,
+                        )
+                    ]
+                    if feedback_enabled
+                    else []
+                )
+                decision = self.agent.act(ego_image, history, feedback)
+                if feedback_enabled and history and decision.state_estimate:
+                    # The estimate at observation t evaluates action t-1,
+                    # never the new action that is about to execute.
+                    history[-1]["assessment"] = decision.state_estimate
                 # Each logical stage writes one small input/output JSON using
                 # its final attempt.  There is deliberately no combined episode
                 # log or second model-audit copy.
@@ -563,6 +609,7 @@ class HCFindNavInteractEvaluator:
                     )
 
                 action_text = skill_to_text(decision.action)
+                generated_motion = None
                 if decision.action.skill == "stand":
                     # Stop/Stand commits the current realized pose; generating
                     # a redundant stand motion would change terminal metrics.
@@ -606,7 +653,26 @@ class HCFindNavInteractEvaluator:
                         action_skill=decision.action.skill,
                         info=info if isinstance(info, dict) else {},
                     )
-                history.append(_history_item(step, decision))
+                item = _history_item(step, decision)
+                if feedback_enabled:
+                    transition = build_transition(
+                        step=step,
+                        action=decision.action,
+                        action_intent=decision.action_intent,
+                        before=before_proprioception,
+                        after=getattr(observation, "proprioception", None),
+                        generated_motion=(
+                            generated_motion.xb_world_75
+                            if generated_motion is not None
+                            else None
+                        ),
+                        fps=float(getattr(self.env, "fps", 30.0)),
+                    )
+                    item["execution_feedback"] = transition
+                    # Complete this existing record with measured outcomes,
+                    # including the last action, without a terminal VLM call.
+                    _write_step_vlm_records(output_dir, step, decision, transition)
+                history.append(item)
                 if done:
                     break
             rollout_succeeded = True

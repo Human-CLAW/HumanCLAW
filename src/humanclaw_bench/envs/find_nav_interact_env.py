@@ -210,7 +210,8 @@ class HCFindNavInteractEnv(HalfPhysicsEnv):
         self._update_cameras()
         sensors = dict(self.sim.get_sensor_observations())
         self._last_obs = HalfPhysicsObservation(
-            head_rgb=_as_rgb_array(sensors["ego_rgb"])
+            head_rgb=_as_rgb_array(sensors["ego_rgb"]),
+            proprioception=fallback.proprioception,
         )
         self._last_semantic = (
             np.asarray(sensors["ego_semantic"]) if "ego_semantic" in sensors else None

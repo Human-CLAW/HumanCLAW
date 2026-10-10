@@ -69,7 +69,7 @@ flowchart TD
     INST --> MODEL["vlm.factory.build_model()<br/>OpenAI-compatible or filesystem queue"]
     MODEL --> ENV["HCFindNavInteractEnv()<br/>build Habitat + human + selected sensors"]
     ENV --> MOTION["MotionSkillRunner()<br/>weights load lazily on reset"]
-    MOTION --> AGENT["PSVEgoAgent()<br/>prompt v4 + verifier v3"]
+    MOTION --> AGENT["PSVEgoAgent()<br/>default: prompt v5 + verifier v4"]
     AGENT --> ROLLOUTS["run_episode_rollouts()"]
     ROLLOUTS --> ROLLOUT["run_rollout(episode, rollout_index)"]
 
@@ -98,7 +98,7 @@ The main values passed between these blocks are deliberately small and typed:
 | Value | Produced by | Consumed by | Meaning |
 |---|---|---|---|
 | `HCFindNavInteractEpisode` | `load_episode()` | agent, environment, recorder | Immutable task, target, scene, spawn, and step limit. |
-| `HalfPhysicsObservation` | `env.reset()` / `env.step()` | evaluator | The current realized ego RGB image; no hidden simulator state is exposed to the VLM. |
+| `HalfPhysicsObservation` | `env.reset()` / `env.step()` | evaluator | Current realized ego RGB and optional proprioception; v5 consumes own-body pose, while v4 still receives only the image. |
 | `PlannerResult` | `agent.act()` | evaluator | Parsed planner/verifier records plus the one authoritative final `SkillCall`. |
 | `GeneratedMotion` | `motion.generate()` | trajectory recorder and environment | Fifteen requested pre-physics frames in world-frame 75-D SMPL-X form. |
 | `info["body_state"]` | `env.step()` | trajectory recorder | The fifteen corresponding humanoid poses actually realized by HalfPhysics. |
@@ -157,7 +157,7 @@ flowchart TD
     FAILOPEN --> NORMAL
 ```
 
-The planner call always occurs. The verifier call occurs only when verifier v3
+The planner call always occurs. The verifier call occurs only when verifier v3/v4
 selects a route for Walk, Stop, Climb upstairs, the first turn-for-sit,
 or stop-after-sit. Other skills use the planner proposal directly through a
 synthetic in-memory accept record. In either case, only `PlannerResult.action`
@@ -169,6 +169,28 @@ valid JSON after five attempts executes one `Walk<forward><slow>`, then replans
 from the resulting observation. This fallback bypasses the verifier because
 the same provider path has just failed five times. A verifier stage that fails
 five times accepts the already-valid planner proposal and continues.
+
+
+### Default feedback loop
+
+`feedback_v1` selects self-contained planner v5/verifier v4; `paper_fullval_v1`
+retains v4/v3. The main flow keeps the same action and physics ordering. V5 adds
+own-body state, the preceding action outcome and the prior decision image to
+the inputs, and emits a state estimate and an expected result for the next action.
+
+`agent.feedback` converts explicitly tagged HalfPhysics Z-up poses into Y-up
+SMPL-X before computing displacement and turn angle in the starting body's
+left/forward/up frame. Parent-local joint rotations are not world-transformed.
+`env_feedback` contains only own-state evidence, never the full info object or
+metric observations.
+
+After each action, the evaluator records generated versus actual motion and
+links the next decision's estimate to that action. The planner caches two
+images, the latest target/recovery memory, and supplies 10 compact history rows.
+Verifier replacements update the executed intent; missing semantic expectations
+are unknown. Logical model call counts do not increase. Replay metadata records
+versions and a profile digest used to validate resumed runs.
+
 
 ## 4. From one SkillCall to the next ego image
 
@@ -276,7 +298,7 @@ flags are independent and may be combined.
 | `_planner_from_plan_skill()` / `_skiller_from_plan_skill()` | Split the single planner response into planning fields and executable action fields. |
 | `_apply_plan_skill_output()` | Updates the bounded mid-level plan/horizon state. |
 | `_gate_turn_for_sit_verifier()` | Calls the turn-for-sit verifier only for the first preparatory turn in a sequence. |
-| `_verifier_prompt()` | Selects and renders a verifier-v3 route, or returns empty when no verifier applies. |
+| `_verifier_prompt()` | Selects and renders the selected version's verifier route, or returns empty when no verifier applies. |
 | `_verifier_action()` | Converts an accept/replace verdict into the final executable action. |
 | `_normalize_verifier_plan()` | Stores proposed and final actions in one stable verifier record. |
 | `_combined_raw_plan()` | Produces the small environment/history view of planner and verifier reasoning. |

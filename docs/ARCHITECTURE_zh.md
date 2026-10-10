@@ -68,7 +68,7 @@ flowchart TD
     INST --> MODEL["vlm.factory.build_model()<br/>OpenAI-compatible 或 filesystem queue"]
     MODEL --> ENV["HCFindNavInteractEnv()<br/>构造 Habitat + human + 所需 sensors"]
     ENV --> MOTION["MotionSkillRunner()<br/>reset 时 lazy load weights"]
-    MOTION --> AGENT["PSVEgoAgent()<br/>prompt v4 + verifier v3"]
+    MOTION --> AGENT["PSVEgoAgent()<br/>default: prompt v5 + verifier v4"]
     AGENT --> ROLLOUTS["run_episode_rollouts()"]
     ROLLOUTS --> ROLLOUT["run_rollout(episode, rollout_index)"]
 
@@ -97,7 +97,7 @@ model state；`PSVEgoAgent` 持有 planner state；evaluator 管理它们的生�
 | Value | 产生者 | 使用者 | 含义 |
 |---|---|---|---|
 | `HCFindNavInteractEpisode` | `load_episode()` | agent、environment、recorder | 不可变的 task、target、scene、spawn 和 step limit。 |
-| `HalfPhysicsObservation` | `env.reset()` / `env.step()` | evaluator | 当前 realized ego RGB；不会向 VLM 暴露隐藏 simulator state。 |
+| `HalfPhysicsObservation` | `env.reset()` / `env.step()` | evaluator | 当前 realized ego RGB 与可选 proprioception；v5 使用自身位姿，v4 仍只接收图像。 |
 | `PlannerResult` | `agent.act()` | evaluator | Parsed planner/verifier record，以及唯一权威的 final `SkillCall`。 |
 | `GeneratedMotion` | `motion.generate()` | trajectory recorder、environment | World-frame 75-D SMPL-X 表示的 15 个 requested pre-physics frame。 |
 | `info["body_state"]` | `env.step()` | trajectory recorder | HalfPhysics 实际实现的对应 15 个 humanoid pose。 |
@@ -156,7 +156,7 @@ flowchart TD
     FAILOPEN --> NORMAL
 ```
 
-Planner call 每一步都会发生。Verifier v3 只在 Walk、Stop、Climb upstairs、
+Planner call 每一步都会发生。Verifier v3/v4 只在 Walk、Stop、Climb upstairs、
 第一次 turn-for-sit 或 stop-after-sit 对应 route 上调用。其他 skill 直接通过
 内存中的 synthetic accept 使用 planner proposal。无论哪种情况，唯一被执行的
 都是 `PlannerResult.action`；若 verifier 替换了 action，原 proposal 绝不会执行。
@@ -165,6 +165,23 @@ Retry 不会重置 Habitat 或 motion state。Planner 连续 5 次仍没有有�
 执行一次 `Walk<forward><slow>`，再根据得到的新 observation 规划。由于同一
 provider path 刚连续失败 5 次，这个 fallback 不再调用 verifier。Verifier 连续
 5 次失败时，则接受已有的有效 planner proposal 并继续。
+
+
+### 默认反馈闭环
+
+`feedback_v1` 使用独立的 planner v5／verifier v4；`paper_fullval_v1` 保留
+v4／v3。下面的主流程保留原有动作与物理执行顺序；v5 在调用前增加自身状态、
+上一动作执行结果与前一决策图像，在输出中增加状态估计和下一动作预期。
+
+`agent.feedback` 将明确标记的 HalfPhysics Z-up pose 转成 Y-up SMPL-X，再计算
+动作开始时身体坐标下的 left／forward／up 位移和转角；局部关节旋转不做世界
+坐标变换。`env_feedback` 只携带自身数据，不转发整个 info 或评测观察。
+
+Evaluator 在动作后记录 generated／actual motion，并将下一决策的估计关联到
+上一步动作。Planner 只缓存两张决策图像，保留最近 10 条紧凑历史及最新目标／
+恢复记忆。Verifier 改写动作时同步改写意图；缺失的语义预期为 unknown。
+模型调用次数不增加。版本和 profile 摘要写入 replay manifest，并用于恢复
+运行的兼容性检查。
 
 ## 4. 从一个 SkillCall 到下一张 ego image
 
@@ -270,7 +287,7 @@ frame sink 与两份 MP4；`--metrics` 只增加 semantic/contact collection 和
 | `_planner_from_plan_skill()` / `_skiller_from_plan_skill()` | 将单一 planner response 拆成 planning field 和 executable action field。 |
 | `_apply_plan_skill_output()` | 更新有界 mid-level plan/horizon state。 |
 | `_gate_turn_for_sit_verifier()` | 一个 sequence 中只为第一次 preparatory turn 调用 turn-for-sit verifier。 |
-| `_verifier_prompt()` | 选择并渲染 verifier-v3 route；不适用时返回空。 |
+| `_verifier_prompt()` | 选择并渲染所选版本的 verifier route；不适用时返回空。 |
 | `_verifier_action()` | 将 accept/replace verdict 转换为最终 executable action。 |
 | `_normalize_verifier_plan()` | 在稳定 verifier record 中同时保存 proposed/final action。 |
 | `_combined_raw_plan()` | 生成供 environment/history 使用的小型 planner/verifier reasoning view。 |
