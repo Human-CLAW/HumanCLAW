@@ -93,12 +93,15 @@ def test_prepare_hssd_cli_forwards_an_offline_supplement(
                 str(tmp_path / "prepared"),
                 "--supplement",
                 str(archive),
+                "--workers",
+                "4",
             ]
         )
         == 0
     )
     assert captured["supplement"] == str(archive)
     assert captured["verify_hashes"] is True
+    assert captured["workers"] == 4
     assert json.loads(capsys.readouterr().out)["output_root"] == str(
         tmp_path / "prepared"
     )

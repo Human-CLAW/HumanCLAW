@@ -3,6 +3,8 @@ import io
 import json
 import tarfile
 
+import pytest
+
 from humanclaw_bench import hssd
 from humanclaw_bench.hssd import load_hssd_modifications, prepare_hssd
 
@@ -73,9 +75,8 @@ def test_sealed_shower_is_removed_without_shifting_object_ids():
     )
 
 
-def test_prepare_hssd_combines_official_and_supplemental_meshes(
-    tmp_path,
-):
+@pytest.fixture
+def hssd_inputs(tmp_path):
     source = tmp_path / "official-hssd"
     (source / "objects" / "a").mkdir(parents=True)
     (source / "stages").mkdir()
@@ -192,12 +193,21 @@ def test_prepare_hssd_combines_official_and_supplemental_meshes(
         )
     )
 
+    return source, modifications
+
+
+@pytest.mark.parametrize("workers", [1, 4])
+def test_prepare_hssd_combines_official_and_supplemental_meshes(
+    hssd_inputs, tmp_path, workers,
+):
+    source, modifications = hssd_inputs
     output = tmp_path / "prepared"
     summary = prepare_hssd(
         source,
         output,
         modifications_root=modifications,
         supplement=modifications / "supplemental_objects",
+        workers=workers,
     )
     assert summary["scene_count"] == 1
     assert summary["motion_counts"] == {"DYNAMIC": 1}
@@ -220,8 +230,63 @@ def test_prepare_hssd_combines_official_and_supplemental_meshes(
     ).is_file()
 
 
+def test_parallel_preparation_matches_serial_bytes_and_links(hssd_inputs, tmp_path):
+    source, modifications = hssd_inputs
+    outputs = [tmp_path / "serial", tmp_path / "parallel"]
+    for output, workers in zip(outputs, [1, 4]):
+        prepare_hssd(source, output, modifications_root=modifications,
+                     supplement=modifications / "supplemental_objects", workers=workers)
+    paths = [{p.relative_to(output) for p in output.rglob("*")} for output in outputs]
+    assert paths[0] == paths[1]
+    for relative in paths[0]:
+        left, right = (output / relative for output in outputs)
+        assert left.is_symlink() == right.is_symlink()
+        if left.is_symlink():
+            assert left.readlink() == right.readlink()
+        elif left.is_file():
+            assert left.read_bytes() == right.read_bytes()
+
+
+@pytest.mark.parametrize("workers", [1, 4])
+def test_preparation_rejects_same_size_corrupted_mesh(hssd_inputs, tmp_path, workers):
+    source, modifications = hssd_inputs
+    (source / "objects/a/asset.glb").write_bytes(b"OBJECT-MESH")
+    output = tmp_path / "corrupt"
+    with pytest.raises(ValueError, match="checksum mismatch"):
+        prepare_hssd(source, output, modifications_root=modifications,
+                     supplement=modifications / "supplemental_objects", workers=workers)
+    assert not output.exists()
+
+
+def test_parallel_copy_failure_does_not_publish_partial_dataset(
+    hssd_inputs, tmp_path, monkeypatch,
+):
+    source, modifications = hssd_inputs
+    original_copy = hssd.shutil.copy2
+
+    def fail_object_copy(source_path, destination, *args, **kwargs):
+        if str(source_path).endswith(".object_config.json"):
+            raise OSError("injected copy failure")
+        return original_copy(source_path, destination, *args, **kwargs)
+
+    monkeypatch.setattr(hssd.shutil, "copy2", fail_object_copy)
+    output = tmp_path / "failed-copy"
+    with pytest.raises(OSError, match="injected copy failure"):
+        prepare_hssd(source, output, modifications_root=modifications,
+                     supplement=modifications / "supplemental_objects", workers=4)
+    assert not output.exists()
+    assert not list(tmp_path.glob(".failed-copy.*"))
+
+
+@pytest.mark.parametrize("workers", [0, 17, True, 1.5])
+def test_invalid_preparation_workers_are_rejected(tmp_path, workers):
+    with pytest.raises(ValueError, match="workers"):
+        prepare_hssd(tmp_path / "missing", workers=workers)
+
+
+@pytest.mark.parametrize("workers", [1, 4])
 def test_content_addressed_supplement_archive_is_verified_and_cached(
-    monkeypatch, tmp_path
+    monkeypatch, tmp_path, workers,
 ):
     payload = b"one-baked-mesh"
     digest = hashlib.sha256(payload).hexdigest()
@@ -244,13 +309,15 @@ def test_content_addressed_supplement_archive_is_verified_and_cached(
         },
     }
     monkeypatch.setattr(hssd, "DEFAULT_ASSET_CACHE", tmp_path / "cache")
+    manifest["files"]["alias.glb"] = dict(manifest["files"]["instance.glb"])
 
     root = hssd._extract_supplement_archive(
         archive_path, manifest, verify_hashes=True
     )
-    assets = hssd._supplement_assets(root, manifest, verify_hashes=True)
+    assets = hssd._supplement_assets(root, manifest, verify_hashes=True, workers=workers)
 
     assert assets["instance.glb"].read_bytes() == payload
+    assert assets["alias.glb"] == assets["instance.glb"]
     assert hssd._extract_supplement_archive(
         archive_path, manifest, verify_hashes=True
     ) == root

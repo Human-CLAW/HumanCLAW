@@ -126,7 +126,7 @@ API key 不作为重放输入。图片和 NumPy 数组由 artifact 引用连接�
 | Tokens | 仅从模型调用 span 的供应商 usage 累加，包含失败调用中已知的用量；缺失值为 null 并报告覆盖率 |
 | 费用 | 依据显式提供的版本化费率估算；没有费率、用量不完整时总费用为 null，保留已知小计 |
 | 时延 | run 墙钟时间；各类 span 的 inclusive 时间和区间并集，不能把嵌套 span 简单相加 |
-| 工具/模块 | 注册、展示、请求、执行和终态次数，区分可用性及观测范围 |
+| 工具/模块 | 按 kind + name 自动汇总注册、展示、请求、执行和终态次数，以及执行失败率、耗时分布、观测覆盖率 |
 
 OpenAI 的 inclusive 输出 token 不再额外加 reasoning；Gemini 分开的可见输出和
 reasoning 才合并。缓存 token 是输入的子集，单独费率只替换相应输入部分。
@@ -137,6 +137,35 @@ reasoning 才合并。缓存 token 是输入的子集，单独费率只替换相
 
 时延范围为 episode 执行及归档，包含追踪开销；模型/模拟器构造、排队启动和
 离线汇总不包含在 run 时延中。该范围写入元数据。首 token 时延未测量。
+
+单次运行自动写入的 `summary.json` 中，`capabilities.entries` 的每一行对应
+一个工具或模块。现有调用计数保留，并增加以下字段；同名工具和模块分别统计：
+
+| 字段 | 含义 |
+| --- | --- |
+| `failure_rate` | 执行失败次数 /（完成次数 + 执行失败次数），取值 0–1；无已知完成/失败的执行时为 null |
+| `failure_rate_denominator` / `failure_rate_coverage` | 失败率的分母，以及该分母占已开始执行次数的比例 |
+| `latency.inclusive_ms` / `latency.union_ms` | 有效闭合 span 的时长总和 / 同一次运行、同一名称的时间区间并集，单位毫秒 |
+| `latency.mean_ms` / `p50_ms` / `p95_ms` / `max_ms` | 单次调用时长的平均值、线性插值分位数和最大值 |
+| `latency.spans` / `closed_spans` / `incomplete_spans` / `invalid_spans` / `coverage` | 观测到的 span 数、具有有效起止时间的数量、缺起止事件的数量、起止时间无效的数量，以及有效计时覆盖率 |
+
+请求拒绝与取消不算执行失败；中断、未闭合、未知终态单独计数，不并入失败率
+分母。仅有结束事件但没有开始事件的 span 记为 `orphan_ends`，不虚增执行或
+完成/失败次数。完成只表示该执行边界未报错，不表示动作取得进展或任务成功。
+内部模块的曝光/请求若未埋点，应理解为不适用，不能把其零事件当作模型未选用。
+
+耗时包含失败与中断调用的有效闭合区间；缺失或无效计时不会补成零时长样本。
+没有有效样本时，平均值、分位数和最大值为 null，总和与并集为已观测小计 0；
+需要结合计时覆盖率和 trace 校验结果解读。不同名称之间仍可能嵌套，不能将
+各行的并集相加作为端到端耗时。
+
+目录级 `experiment_summary.json` 在 `aggregate.capabilities.entries` 中
+自动汇总所有已发现的 attempt。失败率按合并后的调用次数计算，耗时分位数
+按所有有效调用样本重算，不平均各 run 的失败率或 P95。`union_ms` 是各 run
+内部并集之和，不合并不同机器/进程的时钟，也不代表整个目录的墙钟时间。
+`runs_with_entry`、`runs_with_execution` 和 `availability_runs` 保留观测范围；
+某次运行缺少该能力的记录不能推断其零调用。样本仅在离线汇总时临时使用，
+原始依据仍为 `events.jsonl`；不需要重新调用模型或执行 episode。
 
 批量调度另保存本次请求的 episode 清单和子进程状态，因此初始化就失败、没有
 生成 trace 的任务不会静默消失。对比 benchmark 应使用同一批清单，并同时报告

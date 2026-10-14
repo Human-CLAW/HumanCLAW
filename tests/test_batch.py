@@ -7,7 +7,7 @@ import pytest
 from humanclaw_bench import batch
 from humanclaw_bench.batch import _child_process_env
 from humanclaw_bench.config import ReleaseConfig
-from humanclaw_bench.experiments.recorder import TraceRecorder
+from humanclaw_bench.experiments.recorder import TraceRecorder, span
 
 
 def test_child_process_env_bounds_cpu_thread_pools() -> None:
@@ -83,6 +83,8 @@ def _completed_fixture(config, episode, *, env=None, changes=None, success=True)
             target = target[part]
         target[parts[-1]] = value
     with TraceRecorder(_canonical_outputs(config, episode), metadata, pricing=expected.get("pricing")) as recorder:
+        with span("fixture.module", kind="module"):
+            pass
         recorder.finish(outcome={"task_success": success})
     return recorder
 
@@ -133,6 +135,14 @@ def test_batch_forwards_experiment_flags_and_preserves_unique_attempt_membership
     assert second["experiments"]["aggregate"]["runs"] == 2
     assert second["batch_outcomes"]["scored_episodes"] == 1
     assert "previous batches" in second["experiments"]["scope"]
+    capabilities = second["experiments"]["aggregate"]["capabilities"]
+    entry = capabilities["entries"][0]
+    assert entry["name"] == "fixture.module"
+    assert entry["executed"] == entry["failure_rate_denominator"] == 2
+    assert entry["failure_rate"] == 0
+    assert entry["latency"]["closed_spans"] == 2
+    saved = json.loads(Path(second["batch_manifest"]).read_text())
+    assert saved["summary"]["experiments"]["aggregate"]["capabilities"] == capabilities
     assert "not-for-manifest" not in first_bytes.decode()
 
 

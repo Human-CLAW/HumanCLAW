@@ -118,6 +118,14 @@ def test_traced_stop_captures_retry_usage_real_hierarchy_and_unknown_success(tmp
     assert summary["model_usage"]["tokens"]["input_tokens"]["total"] == 300
     assert summary["model_usage"]["tokens"]["output_tokens"]["total"] == 90
     assert summary["cost"]["total_usd"] is None
+    saved = json.loads((directory / "summary.json").read_text())
+    assert saved["capabilities"] == summary["capabilities"]
+    capabilities = {entry["name"]: entry for entry in saved["capabilities"]["entries"]}
+    for name in ("stand", "agent.act", "percept_mid_low", "verifier"):
+        assert capabilities[name]["failure_rate"] == 0
+        assert capabilities[name]["failure_rate_denominator"] == 1
+        assert capabilities[name]["latency"]["closed_spans"] == 1
+        assert capabilities[name]["latency"]["mean_ms"] >= 0
     events = read_events(directory)
     starts = {event["span_id"]: event for event in events if event["event"] == "span.start"}
     model_calls = [event for event in starts.values() if event["kind"] == "model"]
@@ -151,6 +159,13 @@ def test_physics_failure_closes_spans_preserves_partial_replay_and_unknown_metri
     assert summary["outcome"]["task_success"] is None
     assert summary["outcome"]["benchmark_metrics"] is None
     assert summary["latency"]["incomplete_spans"] == 0
+    saved = json.loads((directory / "summary.json").read_text())
+    assert saved["capabilities"] == summary["capabilities"]
+    tool = next(entry for entry in saved["capabilities"]["entries"] if entry["name"] == "walk_forward")
+    assert tool[status] == 1
+    assert tool["failure_rate"] == (1 if status == "failed" else None)
+    assert tool["latency"]["closed_spans"] == 1
+    assert tool["latency"]["coverage"] == 1
     assert validate_trace(directory)["ok"]
     assert evaluator.env.closed
     assert len(evaluator.motion.calls) == 1

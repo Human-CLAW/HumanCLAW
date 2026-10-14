@@ -235,6 +235,133 @@ def test_capabilities_distinguish_registration_exposure_requests_and_execution(t
     assert entries["metrics"]["executed"] == 0
     assert entries["recover"]["available"] is None
     assert capabilities["coverage"]["modules"] == "partial"
+    for name in ("recover", "metrics"):
+        assert entries[name]["failure_rate"] is None
+        assert entries[name]["failure_rate_denominator"] == 0
+        assert entries[name]["failure_rate_coverage"] is None
+        assert entries[name]["latency"]["spans"] == 0
+        assert entries[name]["latency"]["inclusive_ms"] == 0
+        assert entries[name]["latency"]["union_ms"] == 0
+        for field in ("mean_ms", "p50_ms", "p95_ms", "max_ms", "coverage"):
+            assert entries[name]["latency"][field] is None
+    assert entries["state_estimator"]["failure_rate"] == 0
+    assert entries["state_estimator"]["failure_rate_coverage"] == 1
+    assert entries["state_estimator"]["latency"]["mean_ms"] == 2
+
+
+@pytest.mark.parametrize("kind", ["tool", "module"])
+def test_capability_failures_and_latency_cover_nested_parallel_and_partial_calls(tmp_path, kind):
+    run = Run(tmp_path, status="interrupted", success=False).event("run.start", 0)
+    if kind == "tool":
+        for event in ("tool.requested", "tool.rejected", "tool.cancelled"):
+            run.event(event, 1, kind=kind, name="recover")
+    # One name is recursively nested and also executes in parallel.
+    run.event("span.start", 10, span="outer", kind=kind, name="recover")
+    run.call("child", 20, 60, None, kind=kind, name="recover", parent="outer", status="failed")
+    run.call("parallel", 30, 70, None, kind=kind, name="recover")
+    run.event("span.end", 90, span="outer", kind=kind, name="recover", data={"status": "completed"})
+    run.call("interrupted", 80, 100, None, kind=kind, name="recover", status="interrupted")
+    run.event("span.start", 105, span="open", kind=kind, name="recover")
+    other_kind = "module" if kind == "tool" else "tool"
+    run.call("different-kind", 1, 6, None, kind=other_kind, name="recover")
+    path = run.event("run.end", 110).save()
+    summary = summarize_run(path, write=True)
+    entries = {(entry["kind"], entry["name"]): entry for entry in summary["capabilities"]["entries"]}
+    entry = entries[kind, "recover"]
+    assert entry["executed"] == 5
+    assert entry["completed"] == 2
+    assert entry["failed"] == entry["interrupted"] == entry["incomplete"] == 1
+    assert entry["failure_rate"] == pytest.approx(1 / 3)
+    assert entry["failure_rate_denominator"] == 3
+    assert entry["failure_rate_coverage"] == 0.6
+    assert entry["latency"] == {
+        "spans": 5, "closed_spans": 4, "incomplete_spans": 1, "invalid_spans": 0,
+        "coverage": 0.8, "inclusive_ms": 180, "union_ms": 90,
+        "mean_ms": 45, "p50_ms": 40, "p95_ms": pytest.approx(74), "max_ms": 80,
+    }
+    assert entries[other_kind, "recover"]["executed"] == 1
+    assert entries[other_kind, "recover"]["failure_rate"] == 0
+    assert entries[other_kind, "recover"]["latency"]["mean_ms"] == 5
+    assert json.loads((path / "summary.json").read_text())["capabilities"] == summary["capabilities"]
+
+
+@pytest.mark.parametrize("bad_time", [None, True, "invalid", -1])
+def test_capability_invalid_timing_is_not_a_zero_duration_sample(tmp_path, bad_time):
+    run = Run(tmp_path).event("run.start", 0)
+    run.call("zero-duration", 1, 1, None, kind="module", name="observe")
+    run.call("reversed", 5, 4, None, kind="module", name="observe")
+    run.call("invalid-time", 10, 20, None, kind="module", name="observe")
+    run.events[-1]["monotonic_ns"] = bad_time
+    run.event("span.start", 25, span="open", kind="module", name="observe")
+    entries = summarize_run(run.event("run.end", 30).save())["capabilities"]["entries"]
+    latency = entries[0]["latency"]
+    assert latency == {
+        "spans": 4, "closed_spans": 1, "incomplete_spans": 1, "invalid_spans": 2,
+        "coverage": 0.25, "inclusive_ms": 0, "union_ms": 0,
+        "mean_ms": 0, "p50_ms": 0, "p95_ms": 0, "max_ms": 0,
+    }
+
+
+def test_capability_orphan_and_unknown_status_do_not_become_resolved_executions(tmp_path):
+    run = Run(tmp_path).event("run.start", 0)
+    run.event("span.end", 1, span="orphan", kind="tool", name="recover", data={"status": "failed"})
+    run.call("unknown", 2, 3, None, kind="module", name="observe", status=None)
+    entries = {entry["name"]: entry for entry in summarize_run(run.event("run.end", 4).save())["capabilities"]["entries"]}
+    assert entries["recover"]["executed"] == entries["recover"]["failed"] == 0
+    assert entries["recover"]["orphan_ends"] == 1
+    assert entries["recover"]["latency"]["incomplete_spans"] == 1
+    assert entries["recover"]["latency"]["mean_ms"] is None
+    assert entries["observe"]["executed"] == entries["observe"]["unknown_status"] == 1
+    assert entries["observe"]["latency"]["mean_ms"] == 1
+    for entry in entries.values():
+        assert entry["failure_rate"] is None
+        assert entry["failure_rate_denominator"] == 0
+
+
+def test_collection_capabilities_pool_calls_and_sum_only_per_run_unions(tmp_path):
+    first = Run(tmp_path, "first").event("run.start", 0)
+    first.event("capability.registered", 0, kind="tool", name="turn", data={"available": True})
+    first.event("capability.registered", 0, kind="tool", name="unused", data={"available": True})
+    first.call("a", 1, 3, None, kind="tool", name="turn", status="failed")
+    first.call("b", 2, 12, None, kind="tool", name="turn")
+    first.event("run.end", 15).save()
+    # Same span IDs and monotonic origin on a different run/host must not merge.
+    second = Run(tmp_path, "second", status="interrupted").event("run.start", 0)
+    second.event("capability.registered", 0, kind="tool", name="turn", data={"available": True})
+    second.event("capability.registered", 0, kind="tool", name="unused", data={"available": False})
+    second.call("a", 1, 21, None, kind="tool", name="turn")
+    second.event("span.start", 30, span="b", kind="tool", name="turn")
+    second.event("run.end", 40).save()
+    Run(tmp_path, "unobserved").event("run.start", 0).event("run.end", 1).save()
+    result = summarize_runs(tmp_path, write=True)
+    capabilities = result["aggregate"]["capabilities"]
+    entries = {entry["name"]: entry for entry in capabilities["entries"]}
+    turn = entries["turn"]
+    assert capabilities["runs"] == 3
+    assert turn["runs_with_entry"] == turn["runs_with_execution"] == 2
+    assert turn["executed"] == 4
+    assert turn["failure_rate"] == pytest.approx(1 / 3)
+    assert turn["failure_rate_denominator"] == 3
+    assert turn["failure_rate_coverage"] == 0.75
+    assert turn["latency"] == {
+        "spans": 4, "closed_spans": 3, "incomplete_spans": 1, "invalid_spans": 0,
+        "coverage": 0.75, "inclusive_ms": 32, "union_ms": 31,
+        "mean_ms": pytest.approx(32 / 3), "p50_ms": 10, "p95_ms": 19, "max_ms": 20,
+    }
+    assert turn["availability_runs"] == {"available": 2, "unavailable": 0, "unknown": 0}
+    assert entries["unused"]["runs_with_entry"] == 2
+    assert entries["unused"]["runs_with_execution"] == 0
+    assert entries["unused"]["availability_runs"] == {"available": 1, "unavailable": 1, "unknown": 0}
+    assert entries["unused"]["failure_rate"] is None
+    assert entries["unused"]["latency"]["p95_ms"] is None
+    saved = json.loads((tmp_path / "experiment_summary.json").read_text())
+    assert saved == result
+
+
+def test_collection_without_traces_has_no_capability_observations(tmp_path):
+    capabilities = summarize_runs(tmp_path)["aggregate"]["capabilities"]
+    assert capabilities["runs"] == 0
+    assert capabilities["entries"] == []
 
 
 def test_mixed_runs_keep_failed_interrupted_and_unscored_denominators(tmp_path):

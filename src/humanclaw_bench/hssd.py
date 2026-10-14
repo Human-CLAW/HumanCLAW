@@ -9,10 +9,13 @@ use, verifies it, and reuses the persistent cache through symbolic links.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import tarfile
 import tempfile
+from collections.abc import Callable, Iterable
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +31,59 @@ SUPPLEMENT_MANIFEST_NAME = "supplement.json"
 _BLOB_NAME = re.compile(r"[0-9a-f]{64}\.glb")
 
 
+def _validate_workers(workers: int) -> None:
+    """Validate the optional I/O concurrency setting."""
+
+    if (
+        isinstance(workers, bool)
+        or not isinstance(workers, int)
+        or not 1 <= workers <= 16
+    ):
+        raise ValueError("workers must be an integer between 1 and 16")
+
+
+def _map_items(
+    function: Callable[[Any], Any], items: Iterable[Any], workers: int
+) -> list[Any]:
+    """Preserve input order and wait for all writes before propagating failures."""
+
+    _validate_workers(workers)
+    if workers == 1:
+        return [function(item) for item in items]
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        return list(pool.map(function, items))
+
+
+def _copy_config_tree(source: Path, destination: Path, workers: int) -> None:
+    """Copy independent config files before restoring directory metadata."""
+
+    if workers == 1:
+        shutil.copytree(source, destination)
+        return
+    destination.mkdir()
+    directories = []
+    files = []
+
+    def walk_error(error: OSError) -> None:
+        """Reject unreadable directories instead of silently omitting them."""
+
+        raise error
+
+    for directory, names, filenames in os.walk(
+        source, followlinks=True, onerror=walk_error
+    ):
+        current = Path(directory)
+        target = destination / current.relative_to(source)
+        directories.append((current, target))
+        for name in names:
+            (target / name).mkdir()
+        files.extend((current / name, target / name) for name in filenames)
+    _map_items(lambda pair: shutil.copy2(*pair), files, workers)
+    # Applying read-only directory modes before the copies would prevent writes.
+    for pair in reversed(directories):
+        shutil.copystat(*pair)
+
+
 def _read_json(path: Path) -> dict[str, Any]:
     """Load a JSON file and require an object at its root."""
 
@@ -39,9 +95,12 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 def load_hssd_modifications(
     path: str | Path = DEFAULT_MODIFICATIONS,
+    *,
+    workers: int = 1,
 ) -> dict[str, Any]:
     """Validate the explicit scene and object files included in the release."""
 
+    _validate_workers(workers)
     root = resolve_release_path(path)
     scene_config = root / "hssd-hab.scene_dataset_config.json"
     requirements_path = root / "asset_requirements.json"
@@ -151,8 +210,9 @@ def load_hssd_modifications(
             f"{mismatched_supplemental[:5]}"
         )
     referenced_assets: set[str] = set()
-    for object_path in object_paths:
-        config = _read_json(object_path)
+    for object_path, config in zip(
+        object_paths, _map_items(_read_json, object_paths, workers)
+    ):
         render_asset = config.get("render_asset")
         if not isinstance(render_asset, str) or not render_asset:
             raise ValueError(f"Object config has no render asset: {object_path}")
@@ -227,19 +287,22 @@ def _verify_flat_supplement(
     files: dict[str, Any],
     *,
     verify_hashes: bool,
+    workers: int = 1,
 ) -> dict[str, Path]:
     """Validate the legacy flat supplement and map every asset name to a file."""
 
-    assets: dict[str, Path] = {}
-    for name, raw_spec in files.items():
+    def verify(item: tuple[str, Any]) -> tuple[str, Path]:
+        """Verify one named mesh in the legacy supplement layout."""
+
+        name, raw_spec = item
         path = root / name
-        assets[name] = _matching_asset(
+        return name, _matching_asset(
             [path] if path.is_file() else [],
             dict(raw_spec),
             label=f"supplement/{name}",
             verify_hashes=verify_hashes,
         )
-    return assets
+    return dict(_map_items(verify, files.items(), workers))
 
 
 def _verify_blob_supplement(
@@ -247,25 +310,30 @@ def _verify_blob_supplement(
     files: dict[str, Any],
     *,
     verify_hashes: bool,
+    workers: int = 1,
 ) -> dict[str, Path]:
     """Validate content-addressed blobs once and expand their filename mapping."""
 
     blobs = root / "blobs"
-    verified: dict[str, Path] = {}
-    assets: dict[str, Path] = {}
-    for name, raw_spec in files.items():
+    unique_specs: dict[str, dict[str, Any]] = {}
+    for raw_spec in files.values():
         spec = dict(raw_spec)
-        digest = str(spec["sha256"])
+        unique_specs.setdefault(str(spec["sha256"]), spec)
+
+    def verify(item: tuple[str, dict[str, Any]]) -> tuple[str, Path]:
+        """Verify one content-addressed blob shared by all its aliases."""
+
+        digest, spec = item
         path = blobs / f"{digest}.glb"
-        if digest not in verified:
-            verified[digest] = _matching_asset(
-                [path] if path.is_file() else [],
-                spec,
-                label=f"supplement/blobs/{digest}.glb",
-                verify_hashes=verify_hashes,
-            )
-        assets[name] = verified[digest]
-    return assets
+        return digest, _matching_asset(
+            [path] if path.is_file() else [],
+            spec,
+            label=f"supplement/blobs/{digest}.glb",
+            verify_hashes=verify_hashes,
+        )
+
+    verified = dict(_map_items(verify, unique_specs.items(), workers))
+    return {name: verified[str(dict(spec)["sha256"])] for name, spec in files.items()}
 
 
 def _supplement_assets(
@@ -273,15 +341,20 @@ def _supplement_assets(
     manifest: dict[str, Any],
     *,
     verify_hashes: bool,
+    workers: int = 1,
 ) -> dict[str, Path]:
     """Resolve either the content-addressed or legacy flat supplement layout."""
 
     files = dict(manifest["files"])
     if (root / "blobs").is_dir():
-        return _verify_blob_supplement(root, files, verify_hashes=verify_hashes)
+        return _verify_blob_supplement(
+            root, files, verify_hashes=verify_hashes, workers=workers
+        )
     if (root / "supplemental_objects").is_dir():
         root = root / "supplemental_objects"
-    return _verify_flat_supplement(root, files, verify_hashes=verify_hashes)
+    return _verify_flat_supplement(
+        root, files, verify_hashes=verify_hashes, workers=workers
+    )
 
 
 def _extract_supplement_archive(
@@ -374,6 +447,7 @@ def _resolve_supplement(
     value: str | Path | None,
     *,
     verify_hashes: bool,
+    workers: int = 1,
 ) -> tuple[Path, dict[str, Path]]:
     """Resolve a local supplement or download and cache the pinned HF archive."""
 
@@ -397,7 +471,9 @@ def _resolve_supplement(
             root = supplied
         else:
             raise FileNotFoundError(f"HSSD supplement not found: {supplied}")
-    return root, _supplement_assets(root, manifest, verify_hashes=verify_hashes)
+    return root, _supplement_assets(
+        root, manifest, verify_hashes=verify_hashes, workers=workers
+    )
 
 
 def _resolve_required_assets(
@@ -406,35 +482,49 @@ def _resolve_required_assets(
     *,
     supplemental_assets: dict[str, Path],
     verify_hashes: bool,
+    workers: int = 1,
 ) -> dict[str, Path]:
     """Resolve each mesh from official HSSD or the verified external supplement."""
 
     object_specs = dict(required["objects"])
     candidates: dict[str, list[Path]] = {name: [] for name in object_specs}
     for path in (hssd_root / "objects").rglob("*"):
-        if path.is_file() and path.name in candidates:
+        if path.name in candidates:
             candidates[path.name].append(path)
     for name, path in supplemental_assets.items():
         candidates[name].append(path)
-    objects = {
-        name: _matching_asset(
-            candidates[name],
+
+    def verify_object(item: tuple[str, Any]) -> tuple[str, Path]:
+        """Select the exact required mesh from official and supplemental files."""
+
+        name, spec = item
+        return name, _matching_asset(
+            [path for path in candidates[name] if path.is_file()],
             spec,
             label=f"objects/{name}",
             verify_hashes=verify_hashes,
         )
-        for name, spec in object_specs.items()
-    }
 
-    for group in ("stages", "semantics"):
-        for name, spec in dict(required[group]).items():
-            path = hssd_root / group / name
-            _matching_asset(
-                [path] if path.is_file() else [],
-                spec,
-                label=f"{group}/{name}",
-                verify_hashes=verify_hashes,
-            )
+    objects = dict(_map_items(verify_object, object_specs.items(), workers))
+
+    def verify_scene_asset(item: tuple[str, str, Any]) -> Path:
+        """Verify a stage or semantic file at its required relative path."""
+
+        group, name, spec = item
+        path = hssd_root / group / name
+        return _matching_asset(
+            [path] if path.is_file() else [],
+            spec,
+            label=f"{group}/{name}",
+            verify_hashes=verify_hashes,
+        )
+
+    _map_items(
+        verify_scene_asset,
+        ((group, name, spec) for group in ("stages", "semantics")
+         for name, spec in dict(required[group]).items()),
+        workers,
+    )
     return objects
 
 
@@ -454,9 +544,11 @@ def prepare_hssd(
     modifications_root: str | Path = DEFAULT_MODIFICATIONS,
     supplement: str | Path | None = None,
     verify_hashes: bool = True,
+    workers: int = 1,
 ) -> dict[str, Any]:
     """Create the complete val41 dataset while reusing official HSSD meshes."""
 
+    _validate_workers(workers)
     source = _hssd_root(hssd_root)
     output = resolve_release_path(output_root)
     if output.exists():
@@ -464,16 +556,17 @@ def prepare_hssd(
             f"Prepared HSSD output already exists: {output}. "
             "Choose a new --output path."
         )
-    modifications = load_hssd_modifications(modifications_root)
+    modifications = load_hssd_modifications(modifications_root, workers=workers)
     requirements = modifications["requirements"]
     supplement_root, supplemental_assets = _resolve_supplement(
-        modifications, supplement, verify_hashes=verify_hashes
+        modifications, supplement, verify_hashes=verify_hashes, workers=workers
     )
     object_assets = _resolve_required_assets(
         source,
         requirements["assets"],
         supplemental_assets=supplemental_assets,
         verify_hashes=verify_hashes,
+        workers=workers,
     )
 
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -485,12 +578,22 @@ def prepare_hssd(
             modifications["scene_config"],
             temporary / "hssd-hab.scene_dataset_config.json",
         )
-        shutil.copytree(modifications["root"] / "scenes", temporary / "scenes")
-        shutil.copytree(modifications["root"] / "objects", temporary / "objects")
+        _copy_config_tree(
+            modifications["root"] / "scenes", temporary / "scenes", workers
+        )
+        _copy_config_tree(
+            modifications["root"] / "objects", temporary / "objects", workers
+        )
 
         object_root = temporary / "objects" / "humanclaw"
-        for name, source_path in object_assets.items():
+
+        def link_object(item: tuple[str, Path]) -> None:
+            """Link one verified mesh into the temporary prepared dataset."""
+
+            name, source_path = item
             (object_root / name).symlink_to(source_path.resolve())
+
+        _map_items(link_object, object_assets.items(), workers)
 
         (temporary / "stages").symlink_to(
             (source / "stages").resolve(), target_is_directory=True

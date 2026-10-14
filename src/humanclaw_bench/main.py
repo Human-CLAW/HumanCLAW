@@ -78,6 +78,10 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     prepare_hssd.add_argument("--skip-hash-check", action="store_true")
+    prepare_hssd.add_argument(
+        "--workers", type=int, default=1,
+        help="Concurrent preparation I/O workers (1–16; default: 1)",
+    )
 
     run = commands.add_parser(
         "run",
@@ -317,6 +321,7 @@ def main(argv: list[str] | None = None) -> int:
                 modifications_root=args.modifications,
                 supplement=args.supplement,
                 verify_hashes=not args.skip_hash_check,
+                workers=args.workers,
             )
         )
         return 0

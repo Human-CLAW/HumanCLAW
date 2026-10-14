@@ -467,10 +467,60 @@ def _cost_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _capabilities(events: list[dict[str, Any]], spans: dict[str, Any], metadata: dict[str, Any]) -> dict[str, Any]:
-    """Separate advertised availability, model requests and actual execution."""
+_CAPABILITY_COUNTS = (
+    "registered", "exposed", "requested", "rejected", "cancelled", "executed",
+    "completed", "failed", "interrupted", "incomplete", "unknown_status", "orphan_ends",
+)
+_CAPABILITY_SEMANTICS = {
+    "count_semantics": "Recorded events only; absent instrumentation does not imply no activity. "
+                       "Exposure/request counts for internal modules are not applicable unless instrumented.",
+    "failure_rate_semantics": "failed / (completed + failed), or null with no resolved executions. "
+                              "Interrupted, incomplete, unknown-status and orphan spans, rejected/cancelled "
+                              "requests are excluded. Coverage is resolved executions / started executions. "
+                              "Execution completion does not imply benchmark task success.",
+    "latency_semantics": "Milliseconds over valid paired monotonic intervals, including failed/interrupted "
+                         "executions. Missing/invalid intervals are excluded, not zero-duration samples. "
+                         "inclusive_ms sums durations; union_ms merges overlaps within each run and name. "
+                         "Across runs, union_ms sums per-run unions, not collection wall time. "
+                         "Do not add different names or kinds to infer end-to-end latency. "
+                         "Percentiles use linear interpolation over pooled call durations.",
+}
+
+
+def _failure_stats(counts: dict[str, int]) -> dict[str, Any]:
+    """Keep unresolved executions outside the failure-rate denominator."""
+    resolved = counts["completed"] + counts["failed"]
+    return {
+        "failure_rate": counts["failed"] / resolved if resolved else None,
+        "failure_rate_denominator": resolved,
+        "failure_rate_coverage": resolved / counts["executed"] if counts["executed"] else None,
+    }
+
+
+def _capability_latency(
+    durations: list[float], *, union_ms: float, spans: int, incomplete: int, invalid: int,
+) -> dict[str, Any]:
+    """Report the observed timing subtotal and coverage without inventing samples."""
+    return {
+        "spans": spans, "closed_spans": len(durations),
+        "incomplete_spans": incomplete, "invalid_spans": invalid,
+        "coverage": len(durations) / spans if spans else None,
+        "inclusive_ms": sum(durations), "union_ms": union_ms,
+        "mean_ms": sum(durations) / len(durations) if durations else None,
+        "p50_ms": _percentile(durations, 0.5), "p95_ms": _percentile(durations, 0.95),
+        "max_ms": max(durations) if durations else None,
+    }
+
+
+def _capabilities(
+    events: list[dict[str, Any]], spans: dict[str, Any], metadata: dict[str, Any],
+) -> tuple[dict[str, Any], dict[tuple[str, str], list[float]]]:
+    """Summarize capability executions; retain samples in memory for collection statistics."""
     rows: dict[tuple[str, str], Counter] = defaultdict(Counter)
     availability: dict[tuple[str, str], bool] = {}
+    intervals: dict[tuple[str, str], list[tuple[float, float]]] = defaultdict(list)
+    incomplete: Counter = Counter()
+    invalid: Counter = Counter()
     for event in events:
         kind = str(event.get("kind", "unknown"))
         if kind not in {"tool", "module"}:
@@ -487,22 +537,99 @@ def _capabilities(events: list[dict[str, Any]], spans: dict[str, Any], metadata:
         event = pair.get("start") or pair.get("end") or {}
         if event.get("kind") not in {"tool", "module"}:
             continue
-        row = rows[(event["kind"], str(event.get("name", "unknown")))]
-        if "start" in pair:
+        key = (event["kind"], str(event.get("name", "unknown")))
+        row = rows[key]
+        if "start" not in pair:
+            row["orphan_ends"] += 1
+        else:
             row["executed"] += 1
-        data = _mapping(_mapping(pair.get("end")).get("data"))
-        row[str(data.get("status", "incomplete"))] += 1
-    columns = ("registered", "exposed", "requested", "rejected", "cancelled", "executed", "completed", "failed", "interrupted", "incomplete")
-    entries = [{"kind": kind, "name": name, "available": availability.get((kind, name)), **{column: counts[column] for column in columns}} for (kind, name), counts in sorted(rows.items())]
+            status = _mapping(_mapping(pair.get("end")).get("data")).get("status")
+            if "end" not in pair:
+                row["incomplete"] += 1
+            elif status in ("completed", "failed", "interrupted"):
+                row[status] += 1
+            else:
+                row["unknown_status"] += 1
+        interval = _interval(pair)
+        if interval is not None:
+            intervals[key].append(interval)
+        elif "start" not in pair or "end" not in pair:
+            incomplete[key] += 1
+        else:
+            invalid[key] += 1
+    samples = {}
+    entries = []
+    for key, counts in sorted(rows.items()):
+        kind, name = key
+        durations = samples[key] = [end - start for start, end in intervals[key]]
+        entries.append({
+            "kind": kind, "name": name, "available": availability.get(key),
+            **{column: counts[column] for column in _CAPABILITY_COUNTS}, **_failure_stats(counts),
+            "latency": _capability_latency(
+                durations, union_ms=_union_ms(intervals[key]),
+                spans=counts["executed"] + counts["orphan_ends"],
+                incomplete=incomplete[key], invalid=invalid[key],
+            ),
+        })
     return {
         "coverage": metadata.get("capability_coverage", metadata.get("instrumentation_coverage", metadata.get("observability", "unknown"))),
-        "count_semantics": "Recorded events only; absent instrumentation does not imply no activity.",
+        **_CAPABILITY_SEMANTICS,
         "entries": entries,
+    }, samples
+
+
+def _aggregate_capabilities(
+    results: list[tuple[dict[str, Any], dict[tuple[str, str], list[float]]]],
+) -> dict[str, Any]:
+    """Pool calls, not per-run means/percentiles or unrelated monotonic clocks."""
+    counts: dict[tuple[str, str], Counter] = defaultdict(Counter)
+    timings: dict[tuple[str, str], Counter] = defaultdict(Counter)
+    samples: dict[tuple[str, str], list[float]] = defaultdict(list)
+    availability: dict[tuple[str, str], Counter] = defaultdict(Counter)
+    for summary, durations in results:
+        for entry in summary["capabilities"]["entries"]:
+            key = (entry["kind"], entry["name"])
+            row = counts[key]
+            row.update({column: entry[column] for column in _CAPABILITY_COUNTS})
+            row["runs_with_entry"] += 1
+            row["runs_with_execution"] += int(entry["executed"] > 0)
+            availability[key][str(entry["available"]).lower()] += 1
+            timings[key].update({field: entry["latency"][field] for field in (
+                "spans", "incomplete_spans", "invalid_spans", "union_ms",
+            )})
+            samples[key].extend(durations[key])
+    entries = []
+    for key, row in sorted(counts.items()):
+        timing = timings[key]
+        entries.append({
+            "kind": key[0], "name": key[1],
+            **{column: row[column] for column in _CAPABILITY_COUNTS}, **_failure_stats(row),
+            "runs_with_entry": row["runs_with_entry"], "runs_with_execution": row["runs_with_execution"],
+            "availability_runs": {
+                "available": availability[key]["true"], "unavailable": availability[key]["false"],
+                "unknown": availability[key]["none"],
+            },
+            "latency": _capability_latency(
+                samples[key], union_ms=timing["union_ms"], spans=timing["spans"],
+                incomplete=timing["incomplete_spans"], invalid=timing["invalid_spans"],
+            ),
+        })
+    return {
+        "coverage": "See each run's capabilities.coverage; missing rows do not establish zero activity.",
+        "scope": "All discovered trace attempts, including previous batches; not the current batch denominator.",
+        "runs": len(results), **_CAPABILITY_SEMANTICS, "entries": entries,
     }
 
 
 def summarize_run(run_dir: str | Path, write: bool = False) -> dict[str, Any]:
     """Summarize a complete, failed or interrupted run; optionally save summary.json."""
+    return _summarize_run(run_dir, write)[0]
+
+
+def _summarize_run(
+    run_dir: str | Path, write: bool,
+) -> tuple[dict[str, Any], dict[tuple[str, str], list[float]]]:
+    """Read once, returning private duration samples alongside the serializable report."""
 
     directory = Path(run_dir)
     events = read_events(directory)
@@ -517,13 +644,14 @@ def summarize_run(run_dir: str | Path, write: bool = False) -> dict[str, Any]:
     outcome = {**outcome, "task_success": outcome.get("task_success") if isinstance(outcome.get("task_success"), bool) else None}
     run_end = next((event for event in reversed(events) if event.get("event") == "run.end"), {})
     status = manifest.get("status") or _mapping(run_end.get("data")).get("status") or "unknown"
+    capabilities, capability_samples = _capabilities(events, spans, metadata)
     result = {
         "schema": "humanclaw_experiment_summary_v1", "run_dir": str(directory.resolve()),
         "run_id": manifest.get("run_id") or (events[0].get("run_id") if events else directory.name),
         "session_id": manifest.get("session_id"), "episode_id": manifest.get("episode_id"),
         "status": status, "outcome": outcome, "metadata": metadata, "pricing": manifest.get("pricing"),
         "latency": _latency(events, spans, manifest), "model_usage": _usage_summary(records),
-        "cost": _cost_summary(records), "capabilities": _capabilities(events, spans, metadata),
+        "cost": _cost_summary(records), "capabilities": capabilities,
         "trace_diagnostics": validation,
     }
     accounting_complete = (
@@ -538,7 +666,7 @@ def summarize_run(run_dir: str | Path, write: bool = False) -> dict[str, Any]:
             tokens["total"] = None
     if write:
         (directory / "summary.json").write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    return result
+    return result, capability_samples
 
 
 def summarize_runs(root: str | Path, write: bool = False) -> dict[str, Any]:
@@ -547,7 +675,8 @@ def summarize_runs(root: str | Path, write: bool = False) -> dict[str, Any]:
     directory = Path(root)
     candidates = {path.parent for path in directory.rglob("run.json")}
     candidates.update(path.parent for path in directory.rglob("events.jsonl"))
-    runs = [summarize_run(path, write=write) for path in sorted(candidates)]
+    results = [_summarize_run(path, write) for path in sorted(candidates)]
+    runs = [summary for summary, _ in results]
     scored = [run for run in runs if isinstance(run["outcome"].get("task_success"), bool)]
     successful = sum(run["outcome"]["task_success"] for run in scored)
     records = [record for run in runs for record in run["model_usage"]["calls"]]
@@ -559,6 +688,7 @@ def summarize_runs(root: str | Path, write: bool = False) -> dict[str, Any]:
         "task_success_rate_scored_runs": successful / len(scored) if scored else None,
         "outcome_coverage": len(scored) / len(runs) if runs else None,
         "model_usage": _usage_summary(records), "cost": _cost_summary(records),
+        "capabilities": _aggregate_capabilities(results),
         "run_wall_ms": {
             "known_subtotal": sum(wall_values),
             "total": sum(wall_values) if len(wall_values) == len(runs) else None,
