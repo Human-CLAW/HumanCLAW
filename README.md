@@ -90,6 +90,11 @@ HSSD was prepared at a different location.
 See [the evaluation flow](docs/ARCHITECTURE.md), [metric definitions](docs/METRICS.md),
 [video tools](docs/VIDEOS.md), and [model-interface contract](docs/MODELS.md).
 
+For instrumented runs, add `--trace --metrics --seed 42`. See the
+[experiment pipeline](docs/EXPERIMENTS.md) for model/tool/module traces, token and
+cost accounting, replay, and the explicit `bare_api` baseline; see the
+[Klone guide](docs/KLONE_EXPERIMENTS.md) for the Slurm template.
+
 ## Benchmark difficulty
 
 Every episode carries a difficulty label built from three properties of the
@@ -311,6 +316,16 @@ humanclaw-bench assets --weights-root weights/paper_fullval_v1
 
 ## Configure a VLM
 
+Store credentials in the project-root `.env` file (copy `.env.example` for a
+new checkout). HumanCLAW automatically loads this file, preserving any existing
+environment variables. `.env` is ignored by Git; do not put keys in model JSON.
+For the configured Azure deployment, fill in `AZURE_OPENAI_API_KEY` and check
+the image/JSON interface without starting simulation:
+
+```bash
+humanclaw-bench api-check --model-config configs/models/azure_gpt6_astra.json
+```
+
 For vLLM or another OpenAI-compatible server, copy
 `configs/models/vllm_openai_compatible.json` and set the model, endpoint, and
 model-specific `max_tokens`:
@@ -330,8 +345,7 @@ model-specific `max_tokens`:
 
 For a local vLLM endpoint no key is required; the adapter supplies the
 placeholder expected by OpenAI-compatible servers. For a remote endpoint,
-export the named environment variable instead of writing a credential into
-the JSON file.
+set the named variable in `.env` or export it in the terminal.
 
 For Azure OpenAI, use `configs/models/azure_openai_o_series.json`. It reads the
 deployment, endpoint, API version, and key from `AZURE_OPENAI_DEPLOYMENT`,

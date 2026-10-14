@@ -172,6 +172,7 @@ class FilesystemQueueModel:
         """Submit one queued request, await its response, and expose provider usage."""
 
         self.last_usage = {}
+        self.last_trace_usage = {}
         call_id = self._write_request(messages)
         response_path = self.queue_dir / "done" / call_id / "response.json"
         deadline = time.time() + self.timeout_s
@@ -226,6 +227,20 @@ class FilesystemQueueModel:
             self.last_usage = {
                 key: response[key] for key in token_keys if key in response
             }
+        self.last_trace_usage = dict(self.last_usage)
+        raw_usage = response.get("usage")
+        # Preserve the existing paper accounting contract while making the
+        # queue worker's visible-vs-inclusive token semantics explicit in traces.
+        separate_output = (
+            isinstance(raw_usage, str)
+            or (isinstance(raw_usage, dict)
+                and "completion_tokens" in raw_usage
+                and "num_reasoning_tokens" in raw_usage
+                and "output_tokens" not in raw_usage
+                and "visible_output_tokens" not in raw_usage)
+        )
+        if separate_output and "output_tokens" in self.last_trace_usage:
+            self.last_trace_usage["visible_output_tokens"] = self.last_trace_usage.pop("output_tokens")
         for state in ("done", "in_progress", "pending", "tmp"):
             shutil.rmtree(self.queue_dir / state / call_id, ignore_errors=True)
         if response.get("error"):

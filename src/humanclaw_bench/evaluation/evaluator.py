@@ -26,6 +26,10 @@ from humanclaw_bench.evaluation.trajectory import (
     build_replay_metadata,
 )
 from humanclaw_bench.paths import repository_root, resolve_release_path
+from humanclaw_bench.experiments.recorder import TraceRecorder, span
+from humanclaw_bench.experiments.integration import (
+    benchmark_outcome, register_capabilities, run_metadata, seed_runtime,
+)
 
 
 def _load_json(path: str | Path) -> tuple[Path, dict[str, Any]]:
@@ -105,6 +109,7 @@ def _clear_generated_rollout_artifacts(output_dir: Path) -> None:
     for pattern in (
         "step???_percept_mid_low.json",
         "step???_verifier.json",
+        "step???_bare_api.json",
     ):
         for path in output_dir.glob(pattern):
             if path.is_file() or path.is_symlink():
@@ -126,6 +131,7 @@ def _write_step_vlm_records(
     suffixes = {
         "percept_mid_low": "percept_mid_low",
         "verifier": "verifier",
+        "bare_api": "bare_api",
     }
     final_by_stage: dict[str, Any] = {}
     for stage in decision.stage_outputs:
@@ -228,6 +234,11 @@ class HCFindNavInteractEvaluator:
             )
         if int(self.config.get("n_rollouts", 1)) < 1:
             raise ValueError("n_rollouts must be positive")
+        if self.config.get("harness", "humanclaw_psv") not in {"humanclaw_psv", "bare_api"}:
+            raise ValueError("Unknown experiment harness")
+        seed = self.config.get("seed")
+        if seed is not None and not 0 <= int(seed) <= 2**32 - int(self.config.get("n_rollouts", 1)):
+            raise ValueError("Every effective seed must be in [0, 2**32)")
         self._model_config = _load_model_config(
             self.profile,
             self.config["model_config_path"],
@@ -282,20 +293,26 @@ class HCFindNavInteractEvaluator:
             if scene_override is not None
             else resolve_release_path(benchmark["scene_dataset_config"])
         )
-        episode = load_episode(
-            benchmark_dataset_dir=resolve_release_path(benchmark["dataset_dir"]),
-            split=str(benchmark["split"]),
-            scene_id=str(self.config["scene_id"]),
-            scene_dataset_config=scene_config,
-            episode_id=self.config.get("episode_id"),
-            episode_index=int(self.config.get("episode_index", 0)),
-            object_category=self.config.get("object_category"),
-            max_steps=max_steps,
-        )
-        episode = apply_instruction_version(
-            episode,
-            str(benchmark["instruction_version"]),
-        )
+        episode = self.config.get("episode_override")
+        if episode is None:
+            episode = load_episode(
+                benchmark_dataset_dir=resolve_release_path(benchmark["dataset_dir"]),
+                split=str(benchmark["split"]),
+                scene_id=str(self.config["scene_id"]),
+                scene_dataset_config=scene_config,
+                episode_id=self.config.get("episode_id"),
+                episode_index=int(self.config.get("episode_index", 0)),
+                object_category=self.config.get("object_category"),
+                max_steps=max_steps,
+            )
+            episode = apply_instruction_version(
+                episode,
+                str(benchmark["instruction_version"]),
+            )
+        elif not isinstance(episode, HCFindNavInteractEpisode):
+            raise TypeError("episode_override must be HCFindNavInteractEpisode")
+        else:
+            max_steps = episode.max_steps
 
         output_override = self.config.get("output_root")
         if output_override is None:
@@ -353,6 +370,9 @@ class HCFindNavInteractEvaluator:
             max_history=int(agent_config["max_history"]),
             plan_horizon_steps=int(agent_config["plan_horizon_steps"]),
         )
+        if self.config.get("harness", "humanclaw_psv") == "bare_api":
+            from humanclaw_bench.agent.bare_agent import BareAPIAgent
+            self.agent = BareAPIAgent(model)
         self.seed_mode = str(motion_config["seed_mode"])
         self.seed_pkl = (
             str(resolve_release_path(motion_config["seed_pkl"]))
@@ -507,11 +527,62 @@ class HCFindNavInteractEvaluator:
     def run_rollout(
         self, episode: HCFindNavInteractEpisode, rollout_index: int
     ) -> dict[str, Any]:
+        """Run an independently identified attempt; retain traces across reruns."""
+        seed = self.config.get("seed")
+        seed_runtime(int(seed) + rollout_index if seed is not None else None)
+        if not self.config.get("trace", False):
+            return self._run_rollout(episode, rollout_index)
+        pricing = None
+        if self.config.get("pricing"):
+            _, pricing = _load_json(self.config["pricing"])
+        recorder = TraceRecorder(
+            self.rollout_dir(episode, rollout_index),
+            run_metadata(self, episode, rollout_index), pricing=pricing,
+        )
+        self._trace_steps = 0
+        self._trace_termination = "not_started"
+        self._trace_artifacts_ready = False
+        with recorder:
+            register_capabilities(self.config.get("harness", "humanclaw_psv"), compute_metrics=self.compute_metrics)
+            try:
+                result = self._run_rollout(episode, rollout_index)
+            except BaseException as exc:
+                outcome = benchmark_outcome(
+                    self.rollout_dir(episode, rollout_index), steps=self._trace_steps,
+                    termination_reason="interrupted" if isinstance(exc, (KeyboardInterrupt, SystemExit)) else "error",
+                    artifacts_ready=self._trace_artifacts_ready,
+                )
+                recorder.finish(
+                    status="interrupted" if isinstance(exc, (KeyboardInterrupt, SystemExit)) else "failed",
+                    outcome=outcome, error=f"{type(exc).__name__}: {exc}",
+                )
+                from humanclaw_bench.experiments.report import summarize_run
+                try:
+                    summarize_run(recorder.directory, write=True)
+                except Exception:
+                    # The original rollout failure remains the primary exception.
+                    # Its flushed trace can be summarized again offline.
+                    pass
+                raise
+            outcome = benchmark_outcome(
+                self.rollout_dir(episode, rollout_index), steps=self._trace_steps,
+                termination_reason=self._trace_termination,
+            )
+            recorder.finish(status="completed", outcome=outcome)
+            from humanclaw_bench.experiments.report import summarize_run
+            summarize_run(recorder.directory, write=True)
+            result["experiment_dir"] = str(recorder.directory)
+            return result
+
+    def _run_rollout(
+        self, episode: HCFindNavInteractEpisode, rollout_index: int
+    ) -> dict[str, Any]:
         """Execute one closed-loop episode and write only artifacts enabled by mode flags."""
 
         output_dir = self.rollout_dir(episode, rollout_index)
         output_dir.mkdir(parents=True, exist_ok=True)
         _clear_generated_rollout_artifacts(output_dir)
+        self._trace_artifacts_ready = True
 
         history: list[dict[str, Any]] = []
         trajectory: TrajectoryRecorder | None = None
@@ -529,7 +600,9 @@ class HCFindNavInteractEvaluator:
                 self.env.set_video_frame_sink(video_writer.append)
 
             self.agent.reset(episode)
-            observation = self._reset_env_for_rollout(episode)
+            with span("environment.reset", input={"episode_id": episode.episode_id}) as reset_span:
+                observation = self._reset_env_for_rollout(episode)
+                reset_span.set_output({"ego_image": Image.fromarray(observation.head_rgb)})
             if video_writer is not None:
                 self.env.emit_initial_video_frame()
             trajectory = self._new_trajectory_recorder(
@@ -542,73 +615,84 @@ class HCFindNavInteractEvaluator:
             )
 
             for step in range(episode.max_steps):
-                ego_image = Image.fromarray(observation.head_rgb)
-                find_observation = (
-                    self.env.metric_find_observation()
-                    if metric_recorder is not None
-                    else None
-                )
-                # Planner/verifier transport and JSON failures are handled
-                # inside the agent at this unchanged simulator state.
-                decision = self.agent.act(ego_image, history, [])
-                # Each logical stage writes one small input/output JSON using
-                # its final attempt.  There is deliberately no combined episode
-                # log or second model-audit copy.
-                _write_step_vlm_records(output_dir, step, decision)
-                if metric_recorder is not None:
-                    metric_recorder.record_decision(
-                        step=step,
-                        decision=decision,
-                        find_observation=find_observation,
+                with span("decision", kind="step", step=step):
+                    ego_image = Image.fromarray(observation.head_rgb)
+                    find_observation = (
+                        self.env.metric_find_observation()
+                        if metric_recorder is not None
+                        else None
                     )
+                    # Planner/verifier transport and JSON failures are handled
+                    # inside the agent at this unchanged simulator state.
+                    with span("agent.act", input={"image": ego_image, "history": history}) as agent_span:
+                        decision = self.agent.act(ego_image, history, [])
+                        agent_span.set_output({"action": decision.action.to_json(), "planner": decision.planner_skill, "verifier": decision.verifier})
+                    # Each logical stage writes one small input/output JSON using
+                    # its final attempt.  There is deliberately no combined episode
+                    # log or second model-audit copy.
+                    _write_step_vlm_records(output_dir, step, decision)
+                    if metric_recorder is not None:
+                        with span("metrics.record_decision"):
+                            metric_recorder.record_decision(
+                                step=step,
+                                decision=decision,
+                                find_observation=find_observation,
+                            )
 
-                action_text = skill_to_text(decision.action)
-                if decision.action.skill == "stand":
-                    # Stop/Stand commits the current realized pose; generating
-                    # a redundant stand motion would change terminal metrics.
-                    env_action: Any = {
-                        "stop": True,
-                        "skill": "stand",
-                        "action": decision.action.to_json(),
-                    }
-                else:
-                    # trajectory_before records exactly what Half-Physics will
-                    # consume, before contacts and gravity change the pose.
-                    generated_motion = self.motion.generate(
-                        decision.action.skill,
-                        decision.action.cond,
-                    )
-                    trajectory.record_before(
-                        step=step,
-                        action=decision.action,
-                        action_text=action_text,
-                        xb_world_75=generated_motion.xb_world_75,
-                    )
-                    env_action = generated_motion.xb_world_75
+                    with span(decision.action.skill, kind="tool", input=decision.action.to_json(),
+                              attributes={"interface": "structured_action_json"}) as tool_span:
+                        action_text = skill_to_text(decision.action)
+                        if decision.action.skill == "stand":
+                            # Stop/Stand commits the current realized pose; generating
+                            # a redundant stand motion would change terminal metrics.
+                            env_action: Any = {
+                                "stop": True,
+                                "skill": "stand",
+                                "action": decision.action.to_json(),
+                            }
+                        else:
+                            # trajectory_before records exactly what Half-Physics will
+                            # consume, before contacts and gravity change the pose.
+                            with span("motion.generate", input=decision.action.to_json()) as motion_span:
+                                generated_motion = self.motion.generate(decision.action.skill, decision.action.cond)
+                                motion_span.set_output({"xb_world_75": generated_motion.xb_world_75})
+                            trajectory.record_before(
+                                step=step,
+                                action=decision.action,
+                                action_text=action_text,
+                                xb_world_75=generated_motion.xb_world_75,
+                            )
+                            env_action = generated_motion.xb_world_75
 
-                observation, _reward, done, info = self.env.step(
-                    env_action,
-                    reasoning=decision.raw_plan,
-                )
-                body_state = info.get("body_state") if isinstance(info, dict) else None
-                if isinstance(body_state, dict):
-                    # trajectory_after is frame-aligned with the generated
-                    # chunk and includes every dynamic object for fast replay.
-                    assert trajectory is not None
-                    trajectory.record_after(
-                        step=step,
-                        body_state=body_state,
-                        object_states=dict(info.get("object_states") or {}),
-                    )
-                if metric_recorder is not None and decision.action.skill != "stand":
-                    metric_recorder.record_motion(
-                        step=step,
-                        action_skill=decision.action.skill,
-                        info=info if isinstance(info, dict) else {},
-                    )
-                history.append(_history_item(step, decision))
-                if done:
-                    break
+                        with span("environment.step", kind="environment", input={"action": env_action}) as env_span:
+                            observation, _reward, done, info = self.env.step(env_action, reasoning=decision.raw_plan)
+                            env_span.set_output({"ego_image": Image.fromarray(observation.head_rgb), "reward": _reward, "done": done, "info": info})
+                        tool_span.set_output({"done": done, "action": decision.action.to_json()})
+                        body_state = info.get("body_state") if isinstance(info, dict) else None
+                        if isinstance(body_state, dict):
+                            # trajectory_after is frame-aligned with the generated
+                            # chunk and includes every dynamic object for fast replay.
+                            assert trajectory is not None
+                            trajectory.record_after(
+                                step=step,
+                                body_state=body_state,
+                                object_states=dict(info.get("object_states") or {}),
+                            )
+                        if metric_recorder is not None and decision.action.skill != "stand":
+                            with span("metrics.record_motion"):
+                                metric_recorder.record_motion(
+                                    step=step,
+                                    action_skill=decision.action.skill,
+                                    info=info if isinstance(info, dict) else {},
+                                )
+                    with span("history.update") as history_span:
+                        item = _history_item(step, decision)
+                        history.append(item)
+                        history_span.set_output(item)
+                    self._trace_steps = len(history)
+                    self._trace_termination = "stop" if decision.action.skill == "stand" else ("environment_done" if done else "max_steps")
+                    if done:
+                        break
             rollout_succeeded = True
         finally:
             # Motion generation is finished before artifact finalization.
@@ -617,13 +701,15 @@ class HCFindNavInteractEvaluator:
             unload_motion = getattr(self.motion, "unload", None)
             if callable(unload_motion):
                 unload_motion()
-            self._finalize_rollout_artifacts(
-                output_dir=output_dir,
-                trajectory=trajectory,
-                metric_recorder=metric_recorder,
-                video_writer=video_writer,
-                rollout_succeeded=rollout_succeeded,
-            )
+            with span("artifacts.finalize"):
+                self._finalize_rollout_artifacts(
+                    output_dir=output_dir,
+                    trajectory=trajectory,
+                    metric_recorder=metric_recorder,
+                    video_writer=video_writer,
+                    rollout_succeeded=rollout_succeeded,
+                )
+
 
         return {
             "episode_id": episode.episode_id,

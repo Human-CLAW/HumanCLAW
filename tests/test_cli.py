@@ -5,6 +5,51 @@ from humanclaw_bench import hssd
 from humanclaw_bench.main import _build_parser, main
 
 
+def test_experiment_cli_flags_reach_dispatcher(monkeypatch, tmp_path):
+    captured = {}
+    monkeypatch.setattr(batch, "resolve_devices", lambda value: ("0",))
+
+    def fake_batch(config):
+        captured.update(config)
+        return {"failed": 0}
+
+    monkeypatch.setattr(batch, "run_batch", fake_batch)
+    assert main(["run", "--model-config", "model.json", "--output", str(tmp_path),
+                 "--trace", "--metrics", "--harness", "bare_api", "--seed", "42",
+                 "--pricing", "rates.json", "--max-steps", "2"]) == 0
+    assert captured["trace"] is True
+    assert captured["harness"] == "bare_api"
+    assert captured["seed"] == 42
+    assert captured["pricing"] == "rates.json"
+    assert captured["max_steps"] == 2
+
+
+def test_replay_cli_physics_mismatch_is_failure(monkeypatch, capsys):
+    from humanclaw_bench.experiments import replay
+
+    monkeypatch.setattr(replay, "replay_run", lambda *args, **kwargs: {
+        "mode": "physics", "status": "mismatch", "passed": False,
+    })
+    assert main(["replay", "saved_run", "--mode", "physics"]) == 1
+    assert json.loads(capsys.readouterr().out)["passed"] is False
+
+
+def test_trace_cli_works_without_simulator_or_model(tmp_path, capsys):
+    from humanclaw_bench.experiments.recorder import TraceRecorder, span
+
+    with TraceRecorder(tmp_path, {"harness": "test"}) as recorder:
+        with span("observation"):
+            pass
+    assert main(["trace", "validate", str(recorder.directory)]) == 0
+    assert json.loads(capsys.readouterr().out)["ok"]
+    assert main(["replay", str(recorder.directory)]) == 0
+    assert "observation" in capsys.readouterr().out
+    assert main(["trace", "summarize", str(recorder.directory), "--write-json"]) == 0
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["status"] == "completed"
+    assert summary["cost"]["total_usd"] is None
+
+
 def test_rollout_cli_accepts_bounded_max_steps():
     args = _build_parser().parse_args(
         [

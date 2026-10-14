@@ -1,0 +1,11 @@
+{
+  "backend": "openai_compatible",
+  "model": "gpt-6-astra",
+  "base_url": "https://ai-thopo-9134.services.ai.azure.com/openai/v1/",
+  "api_key_env": "AZURE_OPENAI_API_KEY",
+  "max_tokens": 4096,
+  "max_tokens_parameter": "max_completion_tokens",
+  "temperature": 0.0,
+  "send_temperature": false,
+  "response_format": {"type": "json_object"}
+}

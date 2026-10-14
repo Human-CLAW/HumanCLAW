@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-import runtime_forward_replay as forward_replay
+from humanclaw_bench.experiments import physics_replay as forward_replay
 from humanclaw_bench.envs.half_physics_env import (
     xb75_yup_to_half_physics_pose,
 )

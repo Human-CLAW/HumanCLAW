@@ -22,6 +22,8 @@ from humanclaw_bench.agent.utils import (
 )
 from humanclaw_bench.agent.verifiers import resolve_verifier_version
 from humanclaw_bench.vlm.base import VLM
+from humanclaw_bench.experiments.integration import SKILLS, call_model
+from humanclaw_bench.experiments.recorder import event, span
 
 PLAN_HORIZON_STEPS = 6
 VLM_STAGE_MAX_ATTEMPTS = 5
@@ -97,9 +99,14 @@ class HumanClawBenchPSVPlanSkillPlanner:
         """Call the VLM once and preserve raw text, parsed JSON, usage, and parse errors."""
 
         messages = [self._message(image, prompt)]
+        if stage in {"percept_mid_low", "bare_api"}:
+            for skill in SKILLS:
+                event("capability.exposed", kind="tool", name=skill,
+                      data={"interface": "structured_action_json", "stage": stage})
         try:
-            raw_output = self.model.respond(messages)
+            raw_output = call_model(self.model, messages)
         except Exception as exc:  # noqa: BLE001
+            event("model.transport_error", name=stage, data={"error": f"{type(exc).__name__}: {exc}"})
             return PSVStageOutput(
                 stage=stage,
                 raw={},
@@ -115,6 +122,7 @@ class HumanClawBenchPSVPlanSkillPlanner:
         try:
             raw = parse_json_loose(raw_output)
         except Exception as exc:  # noqa: BLE001
+            event("model.parse_error", name=stage, data={"error": f"{type(exc).__name__}: {exc}"})
             return PSVStageOutput(
                 stage=stage,
                 raw={},
@@ -146,22 +154,27 @@ class HumanClawBenchPSVPlanSkillPlanner:
         response for this logical stage, so retries add no routine log clutter.
         """
 
-        attempts: list[PSVStageOutput] = []
-        for attempt_index in range(VLM_STAGE_MAX_ATTEMPTS):
-            attempt = self._call(image, prompt, stage=stage)
-            attempts.append(attempt)
-            if not attempt.error:
-                break
-            if attempt_index < VLM_STAGE_MAX_ATTEMPTS - 1:
-                # Provider overload and transient transport failures tend to
-                # arrive in short correlated bursts.  Immediate retries make
-                # all parallel episodes hit the same burst five times and
-                # incorrectly trigger the recovery action.  Backoff changes
-                # no successful request or model parameter; it only spaces
-                # retries that would otherwise fail at the same environment
-                # state.
-                time.sleep(VLM_RETRY_BACKOFF_SECONDS[attempt_index])
-        return attempts
+        with span(stage, input={"prompt": prompt}) as stage_span:
+            attempts: list[PSVStageOutput] = []
+            for attempt_index in range(VLM_STAGE_MAX_ATTEMPTS):
+                event("module.attempt", name=stage, data={"attempt": attempt_index + 1})
+                attempt = self._call(image, prompt, stage=stage)
+                attempts.append(attempt)
+                if not attempt.error:
+                    break
+                if attempt_index < VLM_STAGE_MAX_ATTEMPTS - 1:
+                    # Provider overload and transient transport failures tend to
+                    # arrive in short correlated bursts.  Immediate retries make
+                    # all parallel episodes hit the same burst five times and
+                    # incorrectly trigger the recovery action.  Backoff changes
+                    # no successful request or model parameter; it only spaces
+                    # retries that would otherwise fail at the same environment
+                    # state.
+                    time.sleep(VLM_RETRY_BACKOFF_SECONDS[attempt_index])
+            stage_span.set_output({"attempts": len(attempts), "response": attempts[-1].raw})
+            if attempts[-1].error:
+                stage_span.fail(attempts[-1].error)
+            return attempts
 
     @staticmethod
     def _angle_bracket_tokens(action_name: str) -> list[str]:
@@ -746,6 +759,8 @@ class HumanClawBenchPSVPlanSkillPlanner:
         planner_plan = self._planner_from_plan_skill(plan_skill_plan)
         skiller_plan = self._skiller_from_plan_skill(plan_skill_plan)
         proposed_action = self._chooser_action(skiller_plan)
+        event("tool.requested", kind="tool", name=proposed_action.skill,
+              data={"action": proposed_action.to_json(), "source": "planner", "fallback": planner_fallback})
         skiller_plan, scheduler_state = self._gate_turn_for_sit_verifier(
             skiller_plan,
             proposed_action,
@@ -823,6 +838,11 @@ class HumanClawBenchPSVPlanSkillPlanner:
                 final_action,
             )
 
+        if final_action.to_json() != proposed_action.to_json():
+            event("tool.rejected", kind="tool", name=proposed_action.skill,
+                  data={"reason": verifier_plan.get("reason"), "action": proposed_action.to_json()})
+            event("tool.requested", kind="tool", name=final_action.skill,
+                  data={"action": final_action.to_json(), "source": "verifier"})
         self._update_turn_for_sit_state(scheduler_state, final_action)
         if self.current_plan:
             self.current_step += 1

@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from ..environment import load_project_environment
 from .base import VLM
 from .filesystem_queue import FilesystemQueueModel
 from .openai_compatible import OpenAICompatibleModel
@@ -14,6 +15,7 @@ from .openai_compatible import OpenAICompatibleModel
 def build_model(config: dict[str, Any], output_dir: str | Path) -> VLM:
     """Construct the configured direct-API or filesystem-queue VLM adapter."""
 
+    load_project_environment()
     required = ("backend", "model", "max_tokens", "temperature", "response_format")
     missing = [key for key in required if key not in config]
     if missing:

@@ -8,6 +8,7 @@ import sys
 
 from .assets import verify_bundled_assets, verify_weights
 from .config import load_config
+from .environment import load_project_environment
 
 
 def _print_json(value) -> None:
@@ -30,6 +31,14 @@ def _add_agent_asset_argument(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_experiment_arguments(parser: argparse.ArgumentParser) -> None:
+    """Expose shared recording, harness, reproducibility, and pricing options."""
+    parser.add_argument("--trace", action="store_true", help="retain immutable experiment traces, usage, and replay snapshots")
+    parser.add_argument("--harness", choices=("humanclaw_psv", "bare_api"), default="humanclaw_psv")
+    parser.add_argument("--seed", type=int, default=None, help="base random seed; rollout index is added")
+    parser.add_argument("--pricing", default=None, help="explicit versioned USD-per-million rate JSON; unknown when omitted")
+
+
 def _build_parser() -> argparse.ArgumentParser:
     """Construct the command-line parser and all rollout/render/asset subcommands."""
 
@@ -38,6 +47,10 @@ def _build_parser() -> argparse.ArgumentParser:
 
     config = commands.add_parser("config", help="show a release profile")
     config.add_argument("profile", nargs="?", default="paper_fullval_v1")
+
+    api_check = commands.add_parser("api-check", help="send one image/JSON API probe without GPU or simulation")
+    api_check.add_argument("--model-config", required=True)
+    api_check.add_argument("--timeout", type=float, default=60.0)
 
     assets = commands.add_parser("assets", help="verify bundled assets and weights")
     assets.add_argument("--weights-root", default=None)
@@ -112,6 +125,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help="also compute every benchmark metric and aggregate the run",
     )
     _add_agent_asset_argument(run)
+    _add_experiment_arguments(run)
+    run.add_argument("--max-steps", type=int, default=None)
 
     rollout = commands.add_parser("rollout", help="run one episode")
     rollout.add_argument("--profile", default="paper_fullval_v1")
@@ -145,6 +160,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="compute the paper metrics and write one metrics.json",
     )
     _add_agent_asset_argument(rollout)
+    _add_experiment_arguments(rollout)
 
     batch = commands.add_parser("batch", help="run an episode slice in parallel")
     batch.add_argument("--profile", default="paper_fullval_v1")
@@ -175,6 +191,24 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
     )
     _add_agent_asset_argument(batch)
+    _add_experiment_arguments(batch)
+    batch.add_argument("--max-steps", type=int, default=None)
+
+    trace = commands.add_parser("trace", help="inspect, validate, and summarize saved experiments without a model or simulator")
+    trace.add_argument("operation", choices=("inspect", "validate", "summarize"))
+    trace.add_argument("path", help="one experiment run directory, or a tree for summarize")
+    trace.add_argument("--write-json", action="store_true")
+
+    replay = commands.add_parser("replay", help="replay a trace log, saved physics actions, or saved video poses")
+    replay.add_argument("run_dir")
+    replay.add_argument("--mode", choices=("log", "physics", "render"), default="log")
+    replay.add_argument("--output-dir", default=None)
+    replay.add_argument("--max-steps", type=int, default=None)
+
+    rerun = commands.add_parser("rerun", help="start a new live attempt using a saved episode and profile (makes model calls)")
+    rerun.add_argument("run_dir")
+    rerun.add_argument("--model-config", required=True)
+    rerun.add_argument("--output", required=True)
 
     metrics = commands.add_parser(
         "metrics",
@@ -257,6 +291,13 @@ def main(argv: list[str] | None = None) -> int:
     """Run the command-line entry point and return its process status."""
 
     args = _build_parser().parse_args(argv)
+    load_project_environment()
+    if args.command == "api-check":
+        from .vlm.api_check import check_model_api
+
+        result = check_model_api(args.model_config, timeout=args.timeout)
+        _print_json(result)
+        return 0 if result["passed"] else 1
     if args.command == "config":
         _print_json(load_config(args.profile).data)
         return 0
@@ -332,6 +373,11 @@ def main(argv: list[str] | None = None) -> int:
                 "save_video": args.video,
                 "compute_metrics": args.metrics,
                 "agent_asset": args.agent_asset,
+                "trace": args.trace,
+                "harness": args.harness,
+                "seed": args.seed,
+                "pricing": args.pricing,
+                "max_steps": args.max_steps,
             }
         )
         _print_json(summary)
@@ -377,6 +423,35 @@ def main(argv: list[str] | None = None) -> int:
             _print_json(summary)
         else:
             print(format_metric_summary(summary))
+        return 0
+    if args.command == "trace":
+        from .experiments.report import format_timeline, summarize_run, summarize_runs, validate_trace
+        from pathlib import Path
+
+        if args.operation == "inspect":
+            print(format_timeline(args.path))
+        elif args.operation == "validate":
+            result = validate_trace(args.path)
+            _print_json(result)
+            return 0 if result["ok"] else 1
+        elif (Path(args.path) / "run.json").is_file():
+            _print_json(summarize_run(args.path, write=args.write_json))
+        else:
+            _print_json(summarize_runs(args.path, write=args.write_json))
+        return 0
+    if args.command == "replay":
+        from .experiments.replay import replay_run
+
+        result = replay_run(args.run_dir, mode=args.mode, output_dir=args.output_dir, max_steps=args.max_steps)
+        if args.mode == "log":
+            print(result["timeline"])
+            return 0 if result["validation"]["ok"] else 1
+        _print_json(result)
+        return 1 if result.get("passed") is False or result.get("ok") is False else 0
+    if args.command == "rerun":
+        from .experiments.replay import rerun_run
+
+        _print_json(rerun_run(args.run_dir, model_config=args.model_config, output_dir=args.output))
         return 0
     if args.command == "render":
         from .rendering import render_saved_trajectory

@@ -16,3 +16,6 @@ weights/paper_fullval_v1/*
 !weights/paper_fullval_v1/README.md
 !weights/paper_fullval_v1/README_zh.md
 *.log
+.env
+.env.*
+!.env.example
